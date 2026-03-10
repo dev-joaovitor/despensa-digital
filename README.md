@@ -1,2 +1,2 @@
-# dispensa-digital
+# despensa-digital
 Projeto de engenharia de software em grupo.
