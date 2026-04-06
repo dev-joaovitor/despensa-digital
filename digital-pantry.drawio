@@ -342,7 +342,7 @@
           </mxGeometry>
         </mxCell>
         <mxCell id="4okjHA1y2NvU6WwTZ_7N-27" parent="1" style="shape=table;startSize=30;container=1;collapsible=1;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;" value="stock_transactions" vertex="1">
-          <mxGeometry height="230" width="180" x="600" y="380" as="geometry">
+          <mxGeometry height="230" width="180" x="500" y="370" as="geometry">
             <mxRectangle height="30" width="70" x="550" y="160" as="alternateBounds" />
           </mxGeometry>
         </mxCell>
@@ -535,7 +535,7 @@
           </mxGeometry>
         </mxCell>
         <mxCell id="4okjHA1y2NvU6WwTZ_7N-91" parent="1" style="shape=table;startSize=30;container=1;collapsible=1;childLayout=tableLayout;fixedRows=1;rowLines=0;fontStyle=1;align=center;resizeLast=1;html=1;" value="stock_batches" vertex="1">
-          <mxGeometry height="300" width="180" x="630" y="50" as="geometry">
+          <mxGeometry height="300" width="180" x="520" y="20" as="geometry">
             <mxRectangle height="30" width="70" x="550" y="160" as="alternateBounds" />
           </mxGeometry>
         </mxCell>
