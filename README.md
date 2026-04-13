@@ -12,6 +12,7 @@ Projeto de engenharia de software em grupo.
   - Database - [jackc/pgx](https://github.com/jackc/pgx)
   - Migrations - [golang-migrate](https://github.com/golang-migrate/migrate)
   - Authentication - bcrypt, [scs](https://github.com/alexedwards/scs)
+  - .env - [env](https://github.com/caarlos0/env)
 
 ## Database
 - [PostgreSQL](https://www.postgresql.org/)
