@@ -1,0 +1,102 @@
+networks:
+  intellistock:
+    driver: bridge
+
+volumes:
+  intellistock_pg_data:
+  intellistock_redis_data:
+  intellistock_server_tmp:
+
+services:
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+      target: dev
+      network: "host"
+    env_file:
+      - .env.development
+    environment:
+      - GOCACHE=/home/appuser/.cache/go-build
+      - GOMODCACHE=/home/appuser/.cache/go-mod
+      - GOPATH=/home/appuser/go
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./server:/app
+      - intellistock_server_tmp:/app/tmp
+    networks:
+      - "intellistock"
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      target: dev
+      network: "host"
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+    env_file:
+      - .env.development
+    networks:
+      - "intellistock"
+
+  database:
+    image: "postgres:16.0-alpine3.18"
+    env_file:
+      - .env.development
+    ports:
+      - "5432:5432"
+    volumes:
+      - intellistock_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - "intellistock"
+
+  database-manager:
+    container_name: "intellistock-pgadmin"
+    image: "dpage/pgadmin4:9.15.0"
+    env_file:
+      - .env.development
+    ports:
+      - "5050:80"
+    networks:
+      - "intellistock"
+
+  redis:
+    image: redis:8.8-alpine3.23
+    ports:
+      - "6379:6379"
+    volumes:
+      - intellistock_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - "intellistock"
+
+  mailcatcher:
+    container_name: "intellistock-mailcatcher"
+    image: "sj26/mailcatcher"
+    env_file:
+      - .env.development
+    ports:
+      - "1025:1025"
+      - "1080:1080"
+    networks:
+      - "intellistock"
+
