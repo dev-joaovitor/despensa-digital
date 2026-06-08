@@ -11,6 +11,7 @@ import (
 	"github.com/dev-joaovitor/despensa-digital/config"
 	"github.com/dev-joaovitor/despensa-digital/database"
 	"github.com/dev-joaovitor/despensa-digital/handlers"
+	"github.com/dev-joaovitor/despensa-digital/mail"
 )
 
 func main() {
@@ -48,6 +49,15 @@ func main() {
 	sessionManager.Cookie.SameSite = http.SameSiteStrictMode
 	sessionManager.Store = goredisstore.New(redisClient)
 
+	// mailer
+	mailer := mail.NewEmailService(
+		cfg.MailSMTPHost,
+		cfg.MailSMTPPort,
+		cfg.MailSMTPUser,
+		cfg.MailSMTPPassword,
+		"noreply@intellistock.com",
+	)
+
 	// migrations
 	if err := database.RunMigrations(cfg.DatabaseURL); err != nil {
 		log.Fatalf("Database schema migration halted system boot: %v", err)
@@ -57,6 +67,7 @@ func main() {
 		DB: dbPool,
 		Cache: redisClient,
 		SessionState: sessionManager,
+		MailService: mailer,
 	}
 
 	server := &http.Server{

@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"context"
+	"database/sql"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -15,6 +17,13 @@ import (
 func (e *Env) AuthHandler(r chi.Router) {
 	r.Post("/login", e.LoginHandler)
 	r.Post("/logout", e.LogoutHandler)
+	r.Post("/send-recovery-code", e.SendRecoveryCodeHandler)
+	r.Post("/verify-recovery-code", e.VerifyRecoveryCodeHandler)
+
+	r.Group(func (auth chi.Router) {
+		auth.Use(e.AuthRequiredMiddleware)
+		auth.Post("/change-password", e.ChangePasswordHandler)
+	})
 }
 
 type LoginDTO struct {
@@ -63,10 +72,10 @@ func (e *Env) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	err = e.DB.QueryRow(
 		r.Context(),
 		`
-			SELECT id, password
-			FROM users
-			WHERE email = $1
-			LIMIT 1
+		SELECT id, password
+		FROM users
+		WHERE email = $1
+		LIMIT 1
 		`,
 		providedLogin.Email,
 	).Scan(&foundUser.ID, &foundUser.Password)
@@ -86,10 +95,173 @@ func (e *Env) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, nil, "Até breve")
 }
 
+type SendRecoveryCodeDTO struct {
+	Email string `json:"email"`
+}
+
+func (e *Env) SendRecoveryCodeHandler(w http.ResponseWriter, r *http.Request) {
+	var err error
+
+	var providedPayload SendRecoveryCodeDTO
+	ReadJSON(w, r, &providedPayload)
+
+	email := strings.TrimSpace(providedPayload.Email)
+	if email == "" {
+		WriteError(w, http.StatusUnprocessableEntity, "Email é obrigatório")
+		return
+	}
+
+	err = e.DB.QueryRow(
+		r.Context(),
+		`
+		SELECT id
+		FROM users
+		WHERE email = $1
+		LIMIT 1
+		`,
+		email,
+	).Scan(nil)
+	if err != nil {
+		fmt.Printf("User not found with email %s: %s\n", email, err)
+	}
+
+	if err == nil {
+		generatedCode, err := Generate4DigitString()
+		if err != nil {
+			fmt.Printf("Failed to generate code: %s\n", err)
+		}
+
+		if err == nil {
+			err = e.MailService.SendPasswordReset(email, generatedCode)
+			if err == nil {
+				_, err = e.DB.Query(
+					r.Context(),
+					`
+					UPDATE users
+					SET verification_code = $1,
+					expires_at = NOW() + INTERVAL '5 minutes'
+					WHERE email = $2
+					`,
+					generatedCode,
+					email,
+				)
+			} else {
+				fmt.Printf("Email service is not working: %s; To: %s / Recovery Code: %s\n", err, email, generatedCode)
+			}
+		}
+	}
+
+	WriteJSON(w, http.StatusOK, nil, "Se a conta existir, enviaremos um código de recuperação para ele")
+}
+
+type VerifyRecoveryCodeDTO struct {
+	Email string `json:"email"`
+	Code string `json:"code"`
+}
+
+func (e *Env) VerifyRecoveryCodeHandler(w http.ResponseWriter, r *http.Request) {
+	var err error
+
+	var providedPayload VerifyRecoveryCodeDTO
+	ReadJSON(w, r, &providedPayload)
+
+	email := strings.TrimSpace(providedPayload.Email)
+	if email == "" {
+		WriteError(w, http.StatusUnprocessableEntity, "Email é obrigatório")
+		return
+	}
+
+	code := strings.TrimSpace(providedPayload.Code)
+	if code == "" {
+		WriteError(w, http.StatusUnprocessableEntity, "O código é obrigatório")
+		return
+	}
+
+	if len(code) != 4 {
+		WriteError(w, http.StatusUnprocessableEntity, "O código inserido deve ter 4 dígitos")
+		return
+	}
+
+	var foundUser models.User
+
+	err = e.DB.QueryRow(
+		r.Context(),
+		`
+		SELECT id
+		FROM users
+		WHERE email = $1
+		AND verification_code = $2
+		AND expires_at > NOW()
+		`,
+		email,
+		code,
+	).Scan(&foundUser.ID)
+	if err != nil {
+		WriteError(w, http.StatusUnauthorized, "O código está errado ou já expirou")
+		return
+	}
+
+	e.SessionState.Put(r.Context(), "userID", &foundUser.ID)
+	WriteJSON(w, http.StatusOK, nil, "Sucesso ao validar o código")
+}
+
+type ChangePasswordDTO struct {
+	NewPassword string `json:"new_password"`
+	NewPasswordConfirmation string `json:"new_password_confirmation"`
+}
+
+func (e *Env) ChangePasswordHandler(w http.ResponseWriter, r *http.Request) {
+	var err error
+
+	var providedPayload ChangePasswordDTO
+	ReadJSON(w, r, &providedPayload)
+
+	newPassword := providedPayload.NewPassword
+	if newPassword == "" {
+		WriteError(w, http.StatusUnprocessableEntity, "Senha é obrigatória")
+		return
+	}
+
+	if len(newPassword) < 6 {
+		WriteError(w, http.StatusUnprocessableEntity, "Senha deve ter pelo menos 6 caracteres.")
+		return
+	}
+
+	passwordConfirmation := providedPayload.NewPasswordConfirmation
+	if newPassword != passwordConfirmation {
+		WriteError(w, http.StatusUnprocessableEntity, "As senhas devem ser iguais")
+		return
+	}
+
+	userId := e.GetSessionUserId(r.Context())
+	newPassword, err = e.HashPassword(newPassword)
+
+	err = e.DB.QueryRow(
+		r.Context(),
+		`
+		UPDATE users
+		SET password = $1
+		WHERE id = $2
+		`,
+		newPassword,
+		userId,
+	).Scan(nil)
+	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			fmt.Printf("user id: %d / new password: %s / error: %s\n", userId, newPassword, err)
+			WriteError(w, http.StatusBadRequest, "Não foi possível trocar a senha, tente novamente mais tarde")
+			return
+		}
+	}
+
+	e.SessionState.RenewToken(r.Context())
+	WriteJSON(w, http.StatusOK, nil, "A senha foi trocada com sucesso")
+}
+
 func (e *Env) AuthRequiredMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !e.SessionState.Exists(r.Context(), "userID") {
-			WriteError(w, http.StatusUnauthorized, "Token inválido. Faça login e tente novamente")
+			WriteError(w, http.StatusUnauthorized, "Você deve estar logado para fazer isso")
 			return
 		}
 

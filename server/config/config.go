@@ -10,6 +10,12 @@ type Config struct {
 	DatabaseURL string `env:"DATABASE_URL" envRequired:"true"`
 	RedisURL    string `env:"REDIS_URL" envRequired:"true"`
 	BcryptRounds int `env:"BCRYPT_ROUNDS" envRequired:"true"`
+	MailSMTPHost string `env:"EMAIL_SMTP_HOST" envRequired:"true"`
+	MailSMTPPort string `env:"EMAIL_SMTP_PORT" envRequired:"true"`
+	MailSMTPUser string `env:"EMAIL_SMTP_USER" envRequired:"true"`
+	MailSMTPPassword string `env:"EMAIL_SMTP_PASSWORD" envRequired:"true"`
+	MailHTTPHost string `env:"EMAIL_HTTP_HOST" envRequired:"true"`
+	MailHTTPPort string `env:"EMAIL_HTTP_PASSWORD" envRequired:"true"`
 }
 
 func Load() (*Config, error) {

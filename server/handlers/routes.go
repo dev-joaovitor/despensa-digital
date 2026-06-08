@@ -4,19 +4,19 @@ import (
 	"net/http"
 
 	"github.com/alexedwards/scs/v2"
+	"github.com/dev-joaovitor/despensa-digital/mail"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
-
 )
-
 
 // Env state sharing layer across handlers via receiver functions.
 type Env struct {
 	DB           *pgxpool.Pool
 	Cache        *redis.Client
 	SessionState *scs.SessionManager
+	MailService  *mail.MailService
 }
 
 func (e *Env) LoadRoutes() http.Handler {

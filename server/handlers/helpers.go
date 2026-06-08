@@ -1,11 +1,13 @@
 package handlers
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
+	"math/big"
 	"net/http"
-
 )
 
 // JSONResponse defines the standardized envelope format for all API outputs.
@@ -79,3 +81,12 @@ func WriteError(w http.ResponseWriter, status int, message string) error {
 	return err
 }
 
+func Generate4DigitString() (string, error) {
+	max := big.NewInt(10000)
+	n, err := rand.Int(rand.Reader, max)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%04d", n.Int64()), nil
+}
