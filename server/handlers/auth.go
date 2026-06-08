@@ -75,6 +75,7 @@ func (e *Env) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		SELECT id, password
 		FROM users
 		WHERE email = $1
+		AND deleted_at IS NULL
 		LIMIT 1
 		`,
 		providedLogin.Email,
@@ -117,6 +118,7 @@ func (e *Env) SendRecoveryCodeHandler(w http.ResponseWriter, r *http.Request) {
 		SELECT id
 		FROM users
 		WHERE email = $1
+		AND deleted_at IS NULL
 		LIMIT 1
 		`,
 		email,
@@ -192,6 +194,7 @@ func (e *Env) VerifyRecoveryCodeHandler(w http.ResponseWriter, r *http.Request) 
 		WHERE email = $1
 		AND verification_code = $2
 		AND expires_at > NOW()
+		AND deleted_at IS NULL
 		`,
 		email,
 		code,
@@ -241,7 +244,7 @@ func (e *Env) ChangePasswordHandler(w http.ResponseWriter, r *http.Request) {
 		`
 		UPDATE users
 		SET password = $1
-		WHERE id = $2
+		WHERE id = $2, updated_at = NOW()
 		`,
 		newPassword,
 		userId,
