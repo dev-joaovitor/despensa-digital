@@ -3,8 +3,8 @@ package handlers
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/dev-joaovitor/despensa-digital/models"
 	"github.com/go-chi/chi/v5"
@@ -12,78 +12,21 @@ import (
 )
 
 func (e *Env) UsersHandler(r chi.Router) {
-	r.Post("/", e.CreateUser)
+	r.Post("/", e.CreateUserHandler)
 
 	r.Group(func (auth chi.Router) {
 		auth.Use(e.AuthRequiredMiddleware)
-		auth.Get("/", e.ListUsers)
+		auth.Patch("/", e.UpdateUserHandler)
+		auth.Get("/", e.ListUsersHandler)
 	})
 }
 
-type UserDTO struct {
-	FullName string `json:"full_name"`
-	Email string `json:"email"`
-	Password string `json:"password"`
-
-	InvitationCode *string `json:"invitation_code"`
-	HouseholdName *string `json:"household_name"`
-}
-
-func ValidateCreateUser(user *UserDTO) error {
-	validationErrors := []string{}
-
-	fullname := strings.TrimSpace(user.FullName)
-	if fullname == "" {
-		validationErrors = append(validationErrors, "Nome completo é obrigatório.")
-	}
-
-	if len(fullname) < 4 || len(fullname) > 100 {
-		validationErrors = append(validationErrors, "Nome completo deve ter entre 4 a 100 caracteres.")
-	}
-
-	password := user.Password
-	if password == "" {
-		validationErrors = append(validationErrors, "Senha é obrigatória.")
-	}
-
-	if len(password) < 6 {
-		validationErrors = append(validationErrors, "Senha deve ter pelo menos 6 caracteres.")
-	}
-
-	email := strings.TrimSpace(user.Email)
-	if email == "" {
-		validationErrors = append(validationErrors, "Email é obrigatório.")
-	}
-
-	if len(email) > 254 {
-		validationErrors = append(validationErrors, "Email é muito grande.")
-	}
-
-	if user.HouseholdName != nil && user.InvitationCode == nil {
-		if strings.TrimSpace(*user.HouseholdName) == "" {
-			validationErrors = append(validationErrors, "É necessário criar uma residência quando não se tem um convite.")
-		}
-	}
-
-	if user.InvitationCode != nil && user.HouseholdName == nil {
-		if strings.TrimSpace(*user.InvitationCode) == "" {
-			validationErrors = append(validationErrors, "É necessário ter um convite se não for criar uma residência.")
-		}
-	}
-
-	if len(validationErrors) == 0 {
-		return nil
-	}
-
-	return errors.New(strings.Join(validationErrors, " "))
-}
-
-func (e *Env) CreateUser(w http.ResponseWriter, r *http.Request) {
+func (e *Env) CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 	var err error
 
-	var providedUser UserDTO
+	var providedUser CreateUserDTO
 	ReadJSON(w, r, &providedUser)
-	err = ValidateCreateUser(&providedUser)
+	err = CreateUserValidator(&providedUser)
 
 	if err != nil {
 		WriteError(w, http.StatusUnprocessableEntity, "Erro de validação: " + err.Error())
@@ -219,7 +162,145 @@ func (e *Env) CreateUser(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusCreated, &createdUser, "Conta criada com sucesso")
 }
 
-func (e *Env) ListUsers(w http.ResponseWriter, r *http.Request) {
+func (e *Env) UpdateUserHandler(w http.ResponseWriter, r *http.Request) {
+	var err error
+
+	var providedUser UpdateUserDTO
+	ReadJSON(w, r, &providedUser)
+	err = UpdateUserValidator(&providedUser)
+
+	if err != nil {
+		WriteError(w, http.StatusUnprocessableEntity, "Erro de validação: " + err.Error())
+		return
+	}
+
+	transaction, err := e.DB.Begin(r.Context())
+
+	if err != nil {
+		if transaction != nil {
+			transaction.Rollback(r.Context())
+		}
+
+		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
+		return
+	}
+
+	userId := e.GetSessionUserId(r.Context())
+
+	var foundUser models.User
+
+	err = e.DB.QueryRow(
+		r.Context(),
+		`
+		SELECT id, password
+		FROM users
+		WHERE id = $1
+		`,
+		userId,
+	).Scan(
+		&foundUser.ID,
+		&foundUser.Password,
+	)
+	if err != nil {
+		transaction.Rollback(r.Context())
+		WriteError(w, http.StatusBadRequest, "Não foi possível atualizar o usuário")
+		return
+	}
+
+	if providedUser.FullName != "" {
+		e.DB.QueryRow(
+			r.Context(),
+			`
+			UPDATE users
+			SET full_name = $1
+			WHERE id = $2
+			`,
+			providedUser.FullName,
+			userId,
+		)
+	}
+
+	if providedUser.Email != "" {
+		e.DB.QueryRow(
+			r.Context(),
+			`
+			UPDATE users
+			SET email = $1
+			WHERE id = $2
+			`,
+			providedUser.Email,
+			userId,
+		)
+	}
+
+	if providedUser.NewPassword != "" {
+		if providedUser.Code != "" {
+			_, err = e.DB.Query(
+				r.Context(),
+				`
+				SELECT id
+				FROM users
+				WHERE id = $1
+				AND verification_code = $2
+				AND expires_at > NOW()
+				LIMIT 1
+				`,
+				userId,
+				providedUser.Code,
+			)
+			if err != nil {
+				transaction.Rollback(r.Context())
+				WriteError(w, http.StatusUnprocessableEntity, "O código expirou ou está errado")
+				return 
+			}
+		} else {
+			if !e.ComparePassword(providedUser.OldPassword, foundUser.Password) {
+				transaction.Rollback(r.Context())
+				WriteError(w, http.StatusUnprocessableEntity, "Senha antiga está incorreta")
+				return 
+			}
+		}
+
+		hashedPassword, err := e.HashPassword(providedUser.NewPassword)
+		if err != nil {
+			transaction.Rollback(r.Context())
+			fmt.Printf("Hash error: %s\n", err)
+			WriteError(w, http.StatusInternalServerError, "Criptografia de senhas falhou")
+			return 
+		}
+
+		e.DB.QueryRow(
+			r.Context(),
+			`
+			UPDATE users
+			SET password = $1, expires_at = NOW()
+			WHERE id = $2
+			`,
+			hashedPassword,
+			userId,
+		)
+	}
+
+	e.DB.QueryRow(
+		r.Context(),
+		`
+		UPDATE users
+		SET updated_at = NOW()
+		WHERE id = $1
+		`,
+		userId,
+	)
+	if err != nil {
+		transaction.Rollback(r.Context())
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	transaction.Commit(r.Context())
+	WriteJSON(w, http.StatusOK, nil, "Conta atualizada com sucesso")
+}
+
+func (e *Env) ListUsersHandler(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	query := `

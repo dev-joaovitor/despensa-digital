@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/dev-joaovitor/despensa-digital/config"
 	"github.com/dev-joaovitor/despensa-digital/models"
@@ -24,11 +25,6 @@ func (e *Env) AuthHandler(r chi.Router) {
 		auth.Use(e.AuthRequiredMiddleware)
 		auth.Post("/change-password", e.ChangePasswordHandler)
 	})
-}
-
-type LoginDTO struct {
-	Email string `json:"email"`
-	Password string `json:"password"`
 }
 
 func ValidateLogin(login *LoginDTO) error {
@@ -96,10 +92,6 @@ func (e *Env) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, nil, "Até breve")
 }
 
-type SendRecoveryCodeDTO struct {
-	Email string `json:"email"`
-}
-
 func (e *Env) SendRecoveryCodeHandler(w http.ResponseWriter, r *http.Request) {
 	var err error
 
@@ -156,11 +148,6 @@ func (e *Env) SendRecoveryCodeHandler(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, nil, "Se a conta existir, enviaremos um código de recuperação para ele")
 }
 
-type VerifyRecoveryCodeDTO struct {
-	Email string `json:"email"`
-	Code string `json:"code"`
-}
-
 func (e *Env) VerifyRecoveryCodeHandler(w http.ResponseWriter, r *http.Request) {
 	var err error
 
@@ -204,17 +191,42 @@ func (e *Env) VerifyRecoveryCodeHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	e.SessionState.Put(r.Context(), "userID", &foundUser.ID)
-	WriteJSON(w, http.StatusOK, nil, "Sucesso ao validar o código")
-}
+	err = e.DB.QueryRow(
+		r.Context(),
+		`
+		UPDATE users
+		SET password = $1, expires_at = NOW()
+		WHERE id = $2
+		`,
+		&foundUser.ID,
+	).Scan(nil)
+	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			WriteError(w, http.StatusInternalServerError, "Erro no banco de dados")
+			return
+		}
+	}
 
-type ChangePasswordDTO struct {
-	NewPassword string `json:"new_password"`
-	NewPasswordConfirmation string `json:"new_password_confirmation"`
+	e.SessionState.Put(r.Context(), "userID", &foundUser.ID)
+	e.Cache.Set(r.Context(), "canChangePassword", bool(true), 5 * time.Minute)
+	WriteJSON(w, http.StatusOK, nil, "Sucesso ao validar o código")
 }
 
 func (e *Env) ChangePasswordHandler(w http.ResponseWriter, r *http.Request) {
 	var err error
+
+	allowed, err := e.Cache.Get(r.Context(), "canChangePassword").Bool()
+
+	if !allowed || err != nil {
+		WriteError(w, http.StatusUnauthorized, "Tempo esgotado para trocar a senha. Reinicie o processo")
+		return
+	}
+
+	err = e.Cache.Del(r.Context(), "canChangePassword").Err()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "Erro no Cache")
+		return
+	}
 
 	var providedPayload ChangePasswordDTO
 	ReadJSON(w, r, &providedPayload)
@@ -243,8 +255,8 @@ func (e *Env) ChangePasswordHandler(w http.ResponseWriter, r *http.Request) {
 		r.Context(),
 		`
 		UPDATE users
-		SET password = $1
-		WHERE id = $2, updated_at = NOW()
+		SET password = $1, updated_at = NOW()
+		WHERE id = $2
 		`,
 		newPassword,
 		userId,

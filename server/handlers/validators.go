@@ -1,0 +1,99 @@
+package handlers
+
+import (
+	"errors"
+	"strings"
+)
+
+func CreateUserValidator(user *CreateUserDTO) error {
+	validationErrors := []string{}
+
+	fullname := strings.TrimSpace(user.FullName)
+	if fullname == "" {
+		validationErrors = append(validationErrors, "Nome completo é obrigatório.")
+	}
+
+	if len(fullname) < 4 || len(fullname) > 100 {
+		validationErrors = append(validationErrors, "Nome completo deve ter entre 4 a 100 caracteres.")
+	}
+
+	password := user.Password
+	if password == "" {
+		validationErrors = append(validationErrors, "Senha é obrigatória.")
+	}
+
+	if len(password) < 6 {
+		validationErrors = append(validationErrors, "Senha deve ter pelo menos 6 caracteres.")
+	}
+
+	email := strings.TrimSpace(user.Email)
+	if email == "" {
+		validationErrors = append(validationErrors, "Email é obrigatório.")
+	}
+
+	if len(email) > 254 {
+		validationErrors = append(validationErrors, "Email é muito grande.")
+	}
+
+	if user.HouseholdName != nil && user.InvitationCode == nil {
+		if strings.TrimSpace(*user.HouseholdName) == "" {
+			validationErrors = append(validationErrors, "É necessário criar uma residência quando não se tem um convite.")
+		}
+	}
+
+	if user.InvitationCode != nil && user.HouseholdName == nil {
+		if strings.TrimSpace(*user.InvitationCode) == "" {
+			validationErrors = append(validationErrors, "É necessário ter um convite se não for criar uma residência.")
+		}
+	}
+
+	if len(validationErrors) == 0 {
+		return nil
+	}
+
+	return errors.New(strings.Join(validationErrors, " "))
+}
+
+func UpdateUserValidator(user *UpdateUserDTO) error {
+	validationErrors := []string{}
+
+	fullname := strings.TrimSpace(user.FullName)
+	if fullname != "" {
+		if len(fullname) < 4 || len(fullname) > 100 {
+			validationErrors = append(validationErrors, "Nome completo deve ter entre 4 a 100 caracteres.")
+		}
+	}
+
+	email := strings.TrimSpace(user.Email)
+	if email != "" {
+		if len(email) > 254 {
+			validationErrors = append(validationErrors, "Email é muito grande.")
+		}
+	}
+
+	newPassword := user.NewPassword
+	if newPassword != "" {
+		if user.OldPassword == "" && user.Code == "" {
+			validationErrors = append(
+				validationErrors,
+				"Você deve verificar sua identidade digitando a senha antiga ou confirmando pelo email.",
+			)
+		}
+
+		if len(newPassword) < 6 {
+			validationErrors = append(validationErrors, "Senha deve ter pelo menos 6 caracteres.")
+		}
+
+		if newPassword != user.NewPasswordConfirmation {
+			validationErrors = append(validationErrors, "Nova senha deve ser igual a confirmação.")
+		}
+	}
+
+	if len(validationErrors) == 0 {
+		return nil
+	}
+
+	return errors.New(strings.Join(validationErrors, " "))
+}
+
+
