@@ -36,6 +36,7 @@ func (e *Env) LoadRoutes() http.Handler {
 			auth.Use(e.AuthRequiredMiddleware)
 			auth.Route("/establishments", e.EstablishmentsHandler)
 			auth.Route("/brands", e.BrandsHandler)
+			auth.Route("/categories", e.CategoriesHandler)
 		})
 	})
 
