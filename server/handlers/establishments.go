@@ -15,6 +15,7 @@ func (e *Env) EstablishmentsHandler(r chi.Router) {
 	r.Get("/", e.ListEstablishmentsHandler)
 	r.Post("/", e.CreateEstablishmentHandler)
 	r.Patch("/{id}", e.UpdateEstablishmentHandler)
+	r.Delete("/{id}", e.DeleteEstablishmentHandler)
 }
 
 func (e *Env) CreateEstablishmentHandler(w http.ResponseWriter, r *http.Request) {
@@ -198,5 +199,37 @@ func (e *Env) ListOneEstablishmentHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	WriteJSON(w, http.StatusOK, foundEstablishment, "Estabelecimento listado com sucesso")
+}
+
+func (e *Env) DeleteEstablishmentHandler(w http.ResponseWriter, r *http.Request) {
+	establishmentId := r.PathValue("id")
+	if establishmentId == "" {
+		WriteError(w, http.StatusBadRequest, "Insira um ID")
+		return
+	}
+
+	err := e.DB.QueryRow(
+		r.Context(),
+		`
+		UPDATE establishments
+		SET deleted_at = NOW()
+		WHERE id = $1
+		AND deleted_at IS NULL
+		RETURNING id
+		`,
+		establishmentId,
+	).Scan(nil)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			WriteError(w, http.StatusNotFound, "Estabelecimento não encontrado")
+			return
+		}
+
+		fmt.Printf("Database error: %v\n", err)
+		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
+		return
+	}
+
+	WriteJSON(w, http.StatusOK, nil, "Estabelecimento deletado com sucesso")
 }
 
