@@ -35,6 +35,7 @@ func (e *Env) LoadRoutes() http.Handler {
 		r.Group(func (auth chi.Router) {
 			auth.Use(e.AuthRequiredMiddleware)
 			auth.Route("/establishments", e.EstablishmentsHandler)
+			auth.Route("/brands", e.BrandsHandler)
 		})
 	})
 

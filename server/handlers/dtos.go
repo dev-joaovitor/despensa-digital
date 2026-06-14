@@ -48,3 +48,12 @@ type CreateEstablishmentDTO struct {
 type UpdateEstablishmentDTO struct {
 	Name string `json:"name"`
 }
+
+// brands
+type CreateBrandDTO struct {
+	Name string `json:"name"`
+}
+
+type UpdateBrandDTO struct {
+	Name string `json:"name"`
+}
