@@ -195,13 +195,14 @@ func (e *Env) VerifyRecoveryCodeHandler(w http.ResponseWriter, r *http.Request) 
 		r.Context(),
 		`
 		UPDATE users
-		SET password = $1, expires_at = NOW()
-		WHERE id = $2
+		SET expires_at = NOW()
+		WHERE id = $1
 		`,
 		&foundUser.ID,
 	).Scan(nil)
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
+			fmt.Printf("Database error: %v\n", err)
 			WriteError(w, http.StatusInternalServerError, "Erro no banco de dados")
 			return
 		}

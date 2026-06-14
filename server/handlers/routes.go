@@ -30,6 +30,12 @@ func (e *Env) LoadRoutes() http.Handler {
 		r.Get("/health", e.HealthCheckHandler)
 		r.Route("/auth", e.AuthHandler)
 		r.Route("/users", e.UsersHandler)
+
+		// auth only routes
+		r.Group(func (auth chi.Router) {
+			auth.Use(e.AuthRequiredMiddleware)
+			auth.Route("/establishments", e.EstablishmentsHandler)
+		})
 	})
 
 	return r

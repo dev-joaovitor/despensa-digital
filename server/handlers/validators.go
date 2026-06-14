@@ -96,4 +96,39 @@ func UpdateUserValidator(user *UpdateUserDTO) error {
 	return errors.New(strings.Join(validationErrors, " "))
 }
 
+// establishments
+func CreateEstablishmentValidator(establishment *CreateEstablishmentDTO) error {
+	validationErrors := []string{}
 
+	name := strings.TrimSpace(establishment.Name)
+	if name == "" {
+		validationErrors = append(validationErrors, "Nome é obrigatório.")
+	}
+
+	if len(name) < 4 || len(name) > 100 {
+		validationErrors = append(validationErrors, "Nome deve ter entre 4 a 100 caracteres.")
+	}
+
+	if len(validationErrors) == 0 {
+		return nil
+	}
+
+	return errors.New(strings.Join(validationErrors, " "))
+}
+
+func UpdateEstablishmentValidator(establishment *UpdateEstablishmentDTO) error {
+	validationErrors := []string{}
+
+	name := strings.TrimSpace(establishment.Name)
+	if name != "" {
+		if len(name) < 4 || len(name) > 100 {
+			validationErrors = append(validationErrors, "Nome deve ter entre 4 a 100 caracteres.")
+		}
+	}
+
+	if len(validationErrors) == 0 {
+		return nil
+	}
+
+	return errors.New(strings.Join(validationErrors, " "))
+}

@@ -8,8 +8,8 @@ type User struct {
 	HouseholdID      *int64      `db:"household_id" json:"household_id,omitempty"`
 	Household		 *Household  `json:"household,omitempty"`
 	FullName         string     `db:"full_name" json:"full_name"`
-	Password         string     `db:"password" json:"-"` // Omitted from JSON serialization for security.
-	Email            string     `db:"email" json:"email"`
+	Password         string     `db:"password" json:"-"`
+	Email            string     `db:"email" json:"email,omitempty"`
 	VerificationCode *string    `db:"verification_code" json:"verification_code,omitempty"`
 	ExpiresAt        *time.Time `db:"expires_at" json:"expires_at,omitempty"`
 	CreatedAt        time.Time  `db:"created_at" json:"created_at"`
