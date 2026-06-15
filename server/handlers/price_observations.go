@@ -15,6 +15,7 @@ import (
 func (e *Env) PriceObservationHandler(r chi.Router) {
 	r.Post("/", e.CreatePriceObservationHandler)
 	r.Get("/", e.ListPriceObservationsHandler)
+	r.Get("/history/{productid}", e.PriceObservationsHistoryHandler)
 }
 
 func (e *Env) CreatePriceObservationHandler(w http.ResponseWriter, r *http.Request) {
@@ -111,11 +112,17 @@ func (e *Env) CreatePriceObservationHandler(w http.ResponseWriter, r *http.Reque
 	WriteJSON(w, http.StatusCreated, createdPriceObservation, "Observação de preço registrada")
 }
 
-func (e *Env) ListPriceObservationsHandler(w http.ResponseWriter, r *http.Request) {
-	params := r.URL.Query()
-	productId, err := strconv.ParseInt(params.Get("product_id"), int(10), 64)
+func (e *Env) PriceObservationsHistoryHandler(w http.ResponseWriter, r *http.Request) {
+	productId, err := strconv.ParseInt(r.PathValue("productid"), int(10), 64)
 	if err != nil {
-		WriteError(w, http.StatusUnprocessableEntity, "product_id: ID do produto deve ser numérico")
+		WriteError(w, http.StatusUnprocessableEntity, "ID do produto deve ser numérico")
+		return
+	}
+
+	params := r.URL.Query()
+	establishmentId, err := strconv.ParseInt(params.Get("establishment_id"), int(10), 64)
+	if err != nil {
+		WriteError(w, http.StatusUnprocessableEntity, "establishment_id: ID do estabelecimento deve ser numérico")
 		return
 	}
 
@@ -162,6 +169,26 @@ func (e *Env) ListPriceObservationsHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	err = e.DB.QueryRow(
+		r.Context(),
+		`
+		SELECT id
+		FROM establishments
+		WHERE id = $1
+		AND deleted_at IS NULL
+		`,
+		establishmentId,
+	).Scan(nil)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			WriteError(w, http.StatusNotFound, "Estabelecimento não encontrado")
+			return
+		}
+		fmt.Printf("Database error: %v\n", err)
+		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
+		return
+	}
+
 	rows, err := e.DB.Query(
 		r.Context(),
 		`
@@ -177,10 +204,12 @@ func (e *Env) ListPriceObservationsHandler(w http.ResponseWriter, r *http.Reques
 			DATE(po.observed_at) >= $2
 			AND DATE(po.observed_at) <= $3
 		)
+		AND po.establishment_id = $4
 		`,
 		productId,
 		from.Format(time.DateOnly),
 		to.Format(time.DateOnly),
+		establishmentId,
 	)
 	if err != nil {
 		fmt.Printf("Database error: %v\n", err)
@@ -210,5 +239,7 @@ func (e *Env) ListPriceObservationsHandler(w http.ResponseWriter, r *http.Reques
 		priceObservations = append(priceObservations, priceObservation)
 	}
 
-	WriteJSON(w, http.StatusOK, priceObservations, "Observações de preço listados com sucesso")
+	WriteJSON(w, http.StatusOK, priceObservations, "Histórico de Observações de preço listados com sucesso")
 }
+
+func (e *Env) ListPriceObservationsHandler(w http.ResponseWriter, r *http.Request) {}
