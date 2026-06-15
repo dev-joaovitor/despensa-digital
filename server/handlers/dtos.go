@@ -66,3 +66,10 @@ type CreateCategoryDTO struct {
 type UpdateCategoryDTO struct {
 	Name string `json:"name"`
 }
+
+// price observations
+type CreatePriceObservationDTO struct {
+	ProductID int64 `json:"product_id"`
+	EstablishmentID int64 `json:"establishment_id"`
+	Price float64 `json:"price"`
+}

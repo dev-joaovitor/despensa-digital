@@ -39,7 +39,6 @@ func (e *Env) CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 		if transaction != nil {
 			transaction.Rollback(r.Context())
 		}
-
 		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
 		return
 	}

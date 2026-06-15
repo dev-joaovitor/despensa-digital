@@ -207,3 +207,32 @@ func UpdateCategoryValidator(category *UpdateCategoryDTO) error {
 	return errors.New(strings.Join(validationErrors, " "))
 }
 
+// price observations
+func CreatePriceObservationValidator(observation *CreatePriceObservationDTO) error {
+	validationErrors := []string{}
+
+	productId := observation.ProductID
+	if productId == 0 {
+		validationErrors = append(validationErrors, "Produto é obrigatório.")
+	}
+
+	establishmentId := observation.EstablishmentID
+	if establishmentId == 0 {
+		validationErrors = append(validationErrors, "Estabelecimento é obrigatório.")
+	}
+
+	price := observation.Price
+	if price == 0 {
+		validationErrors = append(validationErrors, "Preço é obrigatório.")
+	}
+
+	if price < 0 {
+		validationErrors = append(validationErrors, "Preço deve ser positivo.")
+	}
+
+	if len(validationErrors) == 0 {
+		return nil
+	}
+
+	return errors.New(strings.Join(validationErrors, " "))
+}
