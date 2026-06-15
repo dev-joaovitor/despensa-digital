@@ -144,10 +144,11 @@ func (e *Env) ListCategorysHandler(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
 		return
 	}
+	defer rows.Close()
 
 	categories := []models.Category{}
 
-	for rows.Next() == true {
+	for rows.Next() {
 		category := models.Category{}
 		rows.Scan(
 			&category.ID,

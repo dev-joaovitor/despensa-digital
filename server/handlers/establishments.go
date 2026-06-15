@@ -144,10 +144,11 @@ func (e *Env) ListEstablishmentsHandler(w http.ResponseWriter, r *http.Request) 
 		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
 		return
 	}
+	defer rows.Close()
 
 	establishments := []models.Establishment{}
 
-	for rows.Next() == true {
+	for rows.Next() {
 		establishment := models.Establishment{}
 		rows.Scan(
 			&establishment.ID,

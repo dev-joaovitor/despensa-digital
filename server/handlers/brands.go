@@ -144,10 +144,11 @@ func (e *Env) ListBrandsHandler(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
 		return
 	}
+	defer rows.Close()
 
 	brands := []models.Brand{}
 
-	for rows.Next() == true {
+	for rows.Next() {
 		brand := models.Brand{}
 		rows.Scan(
 			&brand.ID,

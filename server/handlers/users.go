@@ -318,10 +318,11 @@ func (e *Env) ListUsersHandler(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
 		return
 	}
+	defer rows.Close()
 
 	users := []models.User{}
 
-	for rows.Next() == true {
+	for rows.Next() {
 		user := models.User{}
 		rows.Scan(
 			&user.ID,

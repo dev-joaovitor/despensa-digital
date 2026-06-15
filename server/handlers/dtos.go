@@ -1,5 +1,11 @@
 package handlers
 
+import (
+	"time"
+
+	"github.com/dev-joaovitor/despensa-digital/models"
+)
+
 // auth
 type LoginDTO struct {
 	Email string `json:"email"`
@@ -72,4 +78,12 @@ type CreatePriceObservationDTO struct {
 	ProductID int64 `json:"product_id"`
 	EstablishmentID int64 `json:"establishment_id"`
 	Price float64 `json:"price"`
+}
+
+type ListPriceObservationsDTO struct {
+	ID int64 `json:"id"`
+	ProductID int64 `json:"product_id"`
+	Establishment models.Establishment `json:"establishment"`
+	ObservedPrice float64 `json:"observed_price"`
+	ObservedAt *time.Time `json:"observed_at"`
 }
