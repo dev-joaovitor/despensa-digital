@@ -243,17 +243,22 @@ func (e *Env) PriceObservationsHistoryHandler(w http.ResponseWriter, r *http.Req
 }
 
 func (e *Env) ListPriceObservationsHandler(w http.ResponseWriter, r *http.Request) {
+	sessionHousehold, err := e.GetSessionUserHousehold(r.Context())
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "Residência não encontrada")
+		return
+	}
+
 	query := r.URL.Query()
-	searchQuery := "AND $1 = $1"
+	searchQuery := "AND $2 = $2"
 
 	search := query.Get("search")
 	if search != "" {
 		search = "%" + search + "%"
-		searchQuery = `AND p.name ILIKE $1`
+		searchQuery = `AND p.name ILIKE $2`
 	}
 
 	priceObservations := []ListPriceObservationsDTO{}
-
 	rows, err := e.DB.Query(
 		r.Context(),
 		`
@@ -269,6 +274,7 @@ func (e *Env) ListPriceObservationsHandler(w http.ResponseWriter, r *http.Reques
 				AVG(observed_price) OVER(PARTITION BY product_id) AS average_price
 			FROM price_observations
 			WHERE deleted_at IS NULL
+			AND household_id = $1
 		)
 		SELECT
 			p.id,
@@ -306,7 +312,9 @@ func (e *Env) ListPriceObservationsHandler(w http.ResponseWriter, r *http.Reques
 		ON lowest_est.id = lowest_obs.establishment_id
 
 		WHERE p.deleted_at IS NULL
+		AND p.household_id = $1
 		` + searchQuery,
+		&sessionHousehold.ID,
 		search,
 	)
 	if err != nil {

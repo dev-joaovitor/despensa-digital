@@ -130,14 +130,22 @@ func (e *Env) UpdateCategoryHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (e *Env) ListCategorysHandler(w http.ResponseWriter, r *http.Request) {
+	sessionHousehold, err := e.GetSessionUserHousehold(r.Context())
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "Residência não encontrada")
+		return
+	}
+
 	rows, err := e.DB.Query(
 		r.Context(),
 		`
 		SELECT id, name, household_id, created_at, updated_at
 		FROM categories
 		WHERE deleted_at IS NULL
+		AND household_id = $1
 		ORDER BY created_at, updated_at DESC
 		`,
+		&sessionHousehold.ID,
 	)
 	if err != nil {
 		fmt.Printf("Database error: %v\n", err)
