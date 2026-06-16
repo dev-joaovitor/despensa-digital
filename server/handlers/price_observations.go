@@ -218,9 +218,9 @@ func (e *Env) PriceObservationsHistoryHandler(w http.ResponseWriter, r *http.Req
 	}
 	defer rows.Close()
 
-	priceObservations := []ListPriceObservationsDTO{}
+	priceObservations := []HistoryPriceObservationsDTO{}
 	for rows.Next() {
-		priceObservation := ListPriceObservationsDTO{}
+		priceObservation := HistoryPriceObservationsDTO{}
 		err = rows.Scan(
 			&priceObservation.ID,
 			&priceObservation.ProductID,
@@ -242,4 +242,105 @@ func (e *Env) PriceObservationsHistoryHandler(w http.ResponseWriter, r *http.Req
 	WriteJSON(w, http.StatusOK, priceObservations, "Histórico de Observações de preço listados com sucesso")
 }
 
-func (e *Env) ListPriceObservationsHandler(w http.ResponseWriter, r *http.Request) {}
+func (e *Env) ListPriceObservationsHandler(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+	searchQuery := "AND $1 = $1"
+
+	search := query.Get("search")
+	if search != "" {
+		search = "%" + search + "%"
+		searchQuery = `AND p.name ILIKE $1`
+	}
+
+	priceObservations := []ListPriceObservationsDTO{}
+
+	rows, err := e.DB.Query(
+		r.Context(),
+		`
+		WITH windowed_observations AS (
+			SELECT
+				observed_at,
+				product_id,
+				observed_price,
+				establishment_id,
+				ROW_NUMBER() OVER(PARTITION BY product_id ORDER BY observed_price ASC) AS lowest_row,
+				ROW_NUMBER() OVER(PARTITION BY product_id ORDER BY observed_at DESC) AS latest_row,
+				MIN(observed_price) OVER(PARTITION BY product_id) AS lowest_price,
+				AVG(observed_price) OVER(PARTITION BY product_id) AS average_price
+			FROM price_observations
+			WHERE deleted_at IS NULL
+		)
+		SELECT
+			p.id,
+			p.name product_name,
+			b.name brand_name,
+			p.unit_size,
+			um.acronym unit_acronym,
+			latest_obs.average_price,
+
+			latest_obs.lowest_price,
+			lowest_obs.observed_at lowest_observed_at,
+			lowest_est.name lowest_establishment_name,
+
+			latest_obs.observed_price current_price,
+			latest_obs.observed_at current_observed_at,
+			latest_est.name latest_establishment_name
+		FROM products p
+
+		JOIN brands b ON p.brand_id = b.id
+
+		JOIN unit_measurements um ON p.measurement_id = um.id
+
+		JOIN windowed_observations latest_obs
+		ON p.id = latest_obs.product_id
+		AND latest_obs.latest_row = 1
+
+		JOIN windowed_observations lowest_obs
+		ON p.id = lowest_obs.product_id
+		AND lowest_obs.lowest_row = 1
+
+		JOIN establishments latest_est
+		ON latest_est.id = latest_obs.establishment_id
+
+		JOIN establishments lowest_est
+		ON lowest_est.id = lowest_obs.establishment_id
+
+		WHERE p.deleted_at IS NULL
+		` + searchQuery,
+		search,
+	)
+	if err != nil {
+		fmt.Printf("Database error: %v\n", err)
+		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		priceObservation := ListPriceObservationsDTO{}
+
+		err = rows.Scan(
+			&priceObservation.Product.ID,
+			&priceObservation.Product.Name,
+			&priceObservation.Product.Brand.Name,
+			&priceObservation.Product.Measurement.Size,
+			&priceObservation.Product.Measurement.Acronym,
+			&priceObservation.AverageObservedPrice,
+			&priceObservation.Lowest.ObservedPrice,
+			&priceObservation.Lowest.ObservedAt,
+			&priceObservation.Lowest.Establishment.Name,
+			&priceObservation.Current.ObservedPrice,
+			&priceObservation.Current.ObservedAt,
+			&priceObservation.Current.Establishment.Name,
+		)
+		if err != nil {
+			fmt.Printf("Database error: %v\n", err)
+			WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
+			return
+		}
+		priceObservations = append(priceObservations, priceObservation)
+	}
+
+	WriteJSON(w, http.StatusOK, priceObservations, "Observações de preço listados com sucesso")
+}
+

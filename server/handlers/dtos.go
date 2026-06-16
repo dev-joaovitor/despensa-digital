@@ -80,10 +80,39 @@ type CreatePriceObservationDTO struct {
 	Price float64 `json:"price"`
 }
 
-type ListPriceObservationsDTO struct {
+type HistoryPriceObservationsDTO struct {
 	ID int64 `json:"id"`
 	ProductID int64 `json:"product_id"`
 	Establishment models.Establishment `json:"establishment"`
 	ObservedPrice float64 `json:"observed_price"`
 	ObservedAt *time.Time `json:"observed_at"`
+}
+
+type ListPriceObservationsDTO struct {
+	Product struct {
+		ID int64 `json:"id"`
+		Name string `json:"name"`
+		Brand struct {
+			Name string `json:"name"`
+		} `json:"brand"`
+		Measurement struct {
+			Size int64 `json:"size"`
+			Acronym string `json:"acronym"`
+		} `json:"measurement"`
+	} `json:"product"`
+	Current struct {
+		ObservedPrice float64 `json:"observed_price"`
+		ObservedAt time.Time `json:"observed_at"`
+		Establishment struct {
+			Name string `json:"name"`
+		} `json:"establishment"`
+	} `json:"current"`
+	AverageObservedPrice float64 `json:"average_observed_price"`
+	Lowest struct {
+		ObservedPrice float64 `json:"observed_price"`
+		ObservedAt time.Time `json:"observed_at"`
+		Establishment struct {
+			Name string `json:"name"`
+		} `json:"establishment"`
+	} `json:"lowest"`
 }
