@@ -121,3 +121,21 @@ type ListPriceObservationsDTO struct {
 		} `json:"establishment"`
 	} `json:"lowest"`
 }
+
+// products
+type ListProductsDTO struct {
+	ID int64 `json:"id"`
+	Name string `json:"name"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Brand struct {
+		Name string `json:"name"`
+	} `json:"brand"`
+	Category struct {
+		Name string `json:"name"`
+	} `json:"category"`
+	Measurement struct {
+		Size int64 `json:"size"`
+		Acronym string `json:"acronym"`
+	} `json:"measurement"`
+}

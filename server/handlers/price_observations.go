@@ -12,7 +12,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func (e *Env) PriceObservationHandler(r chi.Router) {
+func (e *Env) PriceObservationsHandler(r chi.Router) {
 	r.Post("/", e.CreatePriceObservationHandler)
 	r.Get("/", e.ListPriceObservationsHandler)
 	r.Get("/history/{productid}", e.PriceObservationsHistoryHandler)
