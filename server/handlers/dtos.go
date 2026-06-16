@@ -46,6 +46,11 @@ type UpdateUserDTO struct {
 	NewPasswordConfirmation string `json:"new_password_confirmation"`
 }
 
+// households
+type UpdateHouseholdDTO struct {
+	Name string `json:"name"`
+}
+
 // establishments
 type CreateEstablishmentDTO struct {
 	Name string `json:"name"`

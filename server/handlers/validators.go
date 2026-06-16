@@ -5,6 +5,7 @@ import (
 	"strings"
 )
 
+// users
 func CreateUserValidator(user *CreateUserDTO) error {
 	validationErrors := []string{}
 
@@ -86,6 +87,24 @@ func UpdateUserValidator(user *UpdateUserDTO) error {
 
 		if newPassword != user.NewPasswordConfirmation {
 			validationErrors = append(validationErrors, "Nova senha deve ser igual a confirmação.")
+		}
+	}
+
+	if len(validationErrors) == 0 {
+		return nil
+	}
+
+	return errors.New(strings.Join(validationErrors, " "))
+}
+
+// households
+func UpdateHouseholdValidator(household *UpdateHouseholdDTO) error {
+	validationErrors := []string{}
+
+	name := strings.TrimSpace(household.Name)
+	if name != "" {
+		if len(name) < 4 || len(name) > 100 {
+			validationErrors = append(validationErrors, "Nome deve ter entre 4 a 100 caracteres.")
 		}
 	}
 
