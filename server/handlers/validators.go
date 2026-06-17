@@ -255,3 +255,39 @@ func CreatePriceObservationValidator(observation *CreatePriceObservationDTO) err
 
 	return errors.New(strings.Join(validationErrors, " "))
 }
+
+// products
+func CreateProductValidator(product *CreateProductDTO) error {
+	validationErrors := []string{}
+
+	name := strings.TrimSpace(product.Name)
+	if name == "" {
+		validationErrors = append(validationErrors, "Nome é obrigatório.")
+	}
+
+	if len(name) < 4 || len(name) > 100 {
+		validationErrors = append(validationErrors, "Nome deve ter entre 4 a 100 caracteres.")
+	}
+
+	if product.BrandID <= 0 {
+		validationErrors = append(validationErrors, "Marca é obrigatória")
+	}
+
+	if product.MeasurementID <= 0 {
+		validationErrors = append(validationErrors, "Unidade de medida é obrigatória")
+	}
+
+	if product.CategoryID <= 0 {
+		validationErrors = append(validationErrors, "Categoria é obrigatória")
+	}
+
+	if product.UnitSize <= 0 {
+		validationErrors = append(validationErrors, "Tamanho de unidade é obrigatório")
+	}
+
+	if len(validationErrors) == 0 {
+		return nil
+	}
+
+	return errors.New(strings.Join(validationErrors, " "))
+}

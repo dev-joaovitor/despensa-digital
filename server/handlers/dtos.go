@@ -123,6 +123,14 @@ type ListPriceObservationsDTO struct {
 }
 
 // products
+type CreateProductDTO struct {
+	Name string `json:"name"`
+	BrandID int64 `json:"brand_id"`
+	MeasurementID int64 `json:"measurement_id"`
+	CategoryID int64 `json:"category_id"`
+	UnitSize int64 `json:"unit_size"`
+}
+
 type ListProductsDTO struct {
 	ID int64 `json:"id"`
 	Name string `json:"name"`
