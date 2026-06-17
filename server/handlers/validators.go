@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 )
 
@@ -283,6 +284,77 @@ func CreateProductValidator(product *CreateProductDTO) error {
 
 	if product.UnitSize <= 0 {
 		validationErrors = append(validationErrors, "Tamanho de unidade é obrigatório")
+	}
+
+	if len(validationErrors) == 0 {
+		return nil
+	}
+
+	return errors.New(strings.Join(validationErrors, " "))
+}
+
+// shopping list
+func CreateShoppingItemValidator(item *CreateShoppingItemDTO) error {
+	validationErrors := []string{}
+
+	if item.ProductID <= 0 {
+		validationErrors = append(validationErrors, "Produto é obrigatório")
+	}
+
+	if item.Quantity <= 0 {
+		validationErrors = append(validationErrors, "Quantidade é obrigatório. Quantidade deve ser maior que zero.")
+	}
+
+	if item.Quantity > 9999 {
+		validationErrors = append(validationErrors, "Quantidade não deve exceder 9999.")
+	}
+
+	if len(validationErrors) == 0 {
+		return nil
+	}
+
+	return errors.New(strings.Join(validationErrors, " "))
+}
+
+func UpdateShoppingItemValidator(item *UpdateShoppingItemDTO) error {
+	validationErrors := []string{}
+
+	if item.Quantity <= 0 {
+		validationErrors = append(validationErrors, "Quantidade é obrigatório. Quantidade deve ser maior que zero.")
+	}
+
+	if item.Quantity > 9999 {
+		validationErrors = append(validationErrors, "Quantidade não deve exceder 9999.")
+	}
+
+	if len(validationErrors) == 0 {
+		return nil
+	}
+
+	return errors.New(strings.Join(validationErrors, " "))
+}
+
+func SubmitShoppingListValidator(list *SubmitShoppingListDTO) error {
+	validationErrors := []string{}
+
+	if len(list.Items) == 0 {
+		validationErrors = append(validationErrors, "Deve haver pelo menos 1 item na lista.")
+	}
+
+	for index, item := range list.Items {
+		if item.ItemID <= 0 {
+			validationErrors = append(
+				validationErrors,
+				fmt.Sprintf("Id do item de índice %d é inválido", index),
+			)
+		}
+
+		if item.EstablishmentID <= 0 {
+			validationErrors = append(
+				validationErrors,
+				fmt.Sprintf("Id do estabelecimento de índice %d é inválido", index),
+			)
+		}
 	}
 
 	if len(validationErrors) == 0 {

@@ -147,3 +147,39 @@ type ListProductsDTO struct {
 		Acronym string `json:"acronym"`
 	} `json:"measurement"`
 }
+
+// shopping list
+type CreateShoppingItemDTO struct {
+	ProductID int64 `json:"product_id"`
+	Quantity int `json:"quantity"`
+}
+
+type UpdateShoppingItemDTO struct {
+	Quantity int `json:"quantity"`
+}
+
+type ListShoppingItemsDTO struct {
+	ID int64 `json:"id"`
+	Product struct {
+		ID int64 `json:"id"`
+		Name string `json:"name"`
+		Brand struct {
+			Name string `json:"name"`
+		} `json:"brand"`
+		Measurement struct {
+			Size int64 `json:"size"`
+			Acronym string `json:"acronym"`
+		} `json:"measurement"`
+	} `json:"product"`
+	Quantity int `json:"quantity"`
+	IsChecked bool `json:"is_checked"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type SubmitShoppingListDTO struct {
+	Items []struct{
+		ItemID int64 `json:"item_id"`
+		EstablishmentID int64 `json:"establishment_id"`
+	} `json:"items"`
+}
