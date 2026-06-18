@@ -179,7 +179,10 @@ type ListShoppingItemsDTO struct {
 
 type SubmitShoppingListDTO struct {
 	Items []struct{
-		ItemID int64 `json:"item_id"`
+		ProductID int64 `json:"product_id"`
 		EstablishmentID int64 `json:"establishment_id"`
+		ExpirationDate string `json:"expiration_date"`
+		Price float64 `json:"price"`
+		Quantity int `json:"quantity"`
 	} `json:"items"`
 }

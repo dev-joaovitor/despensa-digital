@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 )
 
 // users
@@ -342,18 +343,31 @@ func SubmitShoppingListValidator(list *SubmitShoppingListDTO) error {
 	}
 
 	for index, item := range list.Items {
-		if item.ItemID <= 0 {
+		if item.ProductID <= 0 {
 			validationErrors = append(
 				validationErrors,
-				fmt.Sprintf("Id do item de índice %d é inválido", index),
+				fmt.Sprintf("Id do produto no índice %d é inválido.", index),
 			)
 		}
 
 		if item.EstablishmentID <= 0 {
 			validationErrors = append(
 				validationErrors,
-				fmt.Sprintf("Id do estabelecimento de índice %d é inválido", index),
+				fmt.Sprintf("Id do estabelecimento no índice %d é inválido.", index),
 			)
+		}
+
+		_, err := time.Parse(time.DateOnly, item.ExpirationDate)
+		if err != nil {
+			validationErrors = append(validationErrors, "Data de validade inválida.")
+		}
+
+		if item.Price <= 0 {
+			validationErrors = append(validationErrors, "Preço inválido.")
+		}
+
+		if item.Quantity <= 0 {
+			validationErrors = append(validationErrors, "Quantidade inválida.")
 		}
 	}
 

@@ -8,6 +8,7 @@ import (
 
 	"github.com/dev-joaovitor/despensa-digital/models"
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 )
 
 func (e *Env) ShoppingListHandler(r chi.Router) {
@@ -33,24 +34,20 @@ func (e *Env) CreateShoppingItemHandler(w http.ResponseWriter, r *http.Request) 
 
 	transaction, err := e.DB.Begin(r.Context())
 	if err != nil {
-		if transaction != nil {
-			transaction.Rollback(r.Context())
-		}
-
 		fmt.Printf("Database error: %v\n", err)
 		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
 		return
 	}
+	defer transaction.Rollback(r.Context())
 
 	sessionHousehold, err := e.GetSessionUserHousehold(r.Context())
 	if err != nil {
-		transaction.Rollback(r.Context())
 		fmt.Printf("Session error: %v\n", err)
 		WriteError(w, http.StatusInternalServerError, "Residência não encontrada")
 		return
 	}
 
-	err = e.DB.QueryRow(
+	err = transaction.QueryRow(
 		r.Context(),
 		`
 		SELECT id
@@ -61,7 +58,6 @@ func (e *Env) CreateShoppingItemHandler(w http.ResponseWriter, r *http.Request) 
 		&providedShoppingItem.ProductID,
 	).Scan(nil)
 	if err != nil {
-		transaction.Rollback(r.Context())
 		if errors.Is(err, sql.ErrNoRows) {
 			WriteError(w, http.StatusNotFound, "Produto não encontrado")
 			return
@@ -71,7 +67,7 @@ func (e *Env) CreateShoppingItemHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	err = e.DB.QueryRow(
+	err = transaction.QueryRow(
 		r.Context(),
 		`
 		SELECT id
@@ -82,12 +78,10 @@ func (e *Env) CreateShoppingItemHandler(w http.ResponseWriter, r *http.Request) 
 		&providedShoppingItem.ProductID,
 	).Scan(nil)
 	if err == nil {
-		transaction.Rollback(r.Context())
 		WriteError(w, http.StatusForbidden, "O produto já existe na lista")
 		return
 	} else {
 		if !errors.Is(err, sql.ErrNoRows) {
-			transaction.Rollback(r.Context())
 			fmt.Printf("Database error: %v\n", err)
 			WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
 			return
@@ -95,7 +89,7 @@ func (e *Env) CreateShoppingItemHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var createdShoppingItem models.ShoppingListItem
-	err = e.DB.QueryRow(
+	err = transaction.QueryRow(
 		r.Context(),
 		`
 		INSERT INTO shopping_list_items (household_id, product_id,
@@ -117,7 +111,6 @@ func (e *Env) CreateShoppingItemHandler(w http.ResponseWriter, r *http.Request) 
 		&createdShoppingItem.UpdatedAt,
 	)
 	if err != nil {
-		transaction.Rollback(r.Context())
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -187,16 +180,13 @@ func (e *Env) TickShoppingItemHandler(w http.ResponseWriter, r *http.Request) {
 
 	transaction, err := e.DB.Begin(r.Context())
 	if err != nil {
-		if transaction != nil {
-			transaction.Rollback(r.Context())
-		}
-
 		fmt.Printf("Database error: %v\n", err)
 		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
 		return
 	}
+	defer transaction.Rollback(r.Context())
 
-	err = e.DB.QueryRow(
+	err = transaction.QueryRow(
 		r.Context(),
 		`
 		UPDATE shopping_list_items
@@ -208,7 +198,6 @@ func (e *Env) TickShoppingItemHandler(w http.ResponseWriter, r *http.Request) {
 		itemId,
 	).Scan(nil)
 	if err != nil {
-		transaction.Rollback(r.Context())
 		if errors.Is(err, sql.ErrNoRows) {
 			WriteError(w, http.StatusNotFound, "Item não encontrado")
 			return
@@ -240,16 +229,13 @@ func (e *Env) UpdateItemHandler(w http.ResponseWriter, r *http.Request) {
 
 	transaction, err := e.DB.Begin(r.Context())
 	if err != nil {
-		if transaction != nil {
-			transaction.Rollback(r.Context())
-		}
-
 		fmt.Printf("Database error: %v\n", err)
 		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
 		return
 	}
+	defer transaction.Rollback(r.Context())
 
-	err = e.DB.QueryRow(
+	err = transaction.QueryRow(
 		r.Context(),
 		`
 		UPDATE shopping_list_items
@@ -262,7 +248,6 @@ func (e *Env) UpdateItemHandler(w http.ResponseWriter, r *http.Request) {
 		itemId,
 	).Scan(nil)
 	if err != nil {
-		transaction.Rollback(r.Context())
 		if errors.Is(err, sql.ErrNoRows) {
 			WriteError(w, http.StatusNotFound, "Item não encontrado")
 			return
@@ -285,16 +270,13 @@ func (e *Env) DeleteShoppingItemHandler(w http.ResponseWriter, r *http.Request) 
 
 	transaction, err := e.DB.Begin(r.Context())
 	if err != nil {
-		if transaction != nil {
-			transaction.Rollback(r.Context())
-		}
-
 		fmt.Printf("Database error: %v\n", err)
 		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
 		return
 	}
+	defer transaction.Rollback(r.Context())
 
-	err = e.DB.QueryRow(
+	err = transaction.QueryRow(
 		r.Context(),
 		`
 		UPDATE shopping_list_items
@@ -306,7 +288,6 @@ func (e *Env) DeleteShoppingItemHandler(w http.ResponseWriter, r *http.Request) 
 		itemId,
 	).Scan(nil)
 	if err != nil {
-		transaction.Rollback(r.Context())
 		if errors.Is(err, sql.ErrNoRows) {
 			WriteError(w, http.StatusNotFound, "Item não encontrado")
 			return
@@ -320,4 +301,204 @@ func (e *Env) DeleteShoppingItemHandler(w http.ResponseWriter, r *http.Request) 
 	WriteJSON(w, http.StatusOK, nil, "Item removido com sucesso")
 }
 
-func (e *Env) SubmitShoppingListHandler(w http.ResponseWriter, r *http.Request) {}
+func (e *Env) SubmitShoppingListHandler(w http.ResponseWriter, r *http.Request) {
+	sessionHousehold, err := e.GetSessionUserHousehold(r.Context())
+	if err != nil {
+		fmt.Printf("Session error: %v\n", err)
+		WriteError(w, http.StatusInternalServerError, "Residência não encontrada")
+		return
+	}
+
+	var providedShoppingList SubmitShoppingListDTO
+	ReadJSON(w, r, &providedShoppingList)
+	err = SubmitShoppingListValidator(&providedShoppingList)
+
+	if err != nil {
+		WriteError(w, http.StatusUnprocessableEntity, "Erro de validação: " + err.Error())
+		return
+	}
+	
+	var productsIds []int64
+	var establishmentIds []int64
+	tempStockBatchRows := make([][]any, len(providedShoppingList.Items))
+	for i, item  := range providedShoppingList.Items {
+		productsIds = append(productsIds, item.ProductID)
+		establishmentIds = append(establishmentIds, item.EstablishmentID)
+		tempStockBatchRows[i] = []any{
+			sessionHousehold.ID,
+			item.ProductID,
+			item.EstablishmentID,
+			item.Quantity, // initial
+			item.Quantity, // remaining
+			item.Price,
+			item.ExpirationDate,
+		}
+	}
+
+	var count int
+	err = e.DB.QueryRow(
+		r.Context(),
+		`SELECT COUNT(1) FROM products p
+		JOIN shopping_list_items i
+		ON p.id = i.product_id
+		AND i.is_checked = true
+		AND i.deleted_at IS NULL
+		WHERE p.id = ANY($1)
+		AND p.deleted_at IS NULL`,
+		productsIds,
+	).Scan(&count)
+	if err != nil {
+		fmt.Printf("Database error count products: %v\n", err)
+		WriteError(w, http.StatusInternalServerError, "Validação de produtos falhou")
+		return
+	}
+	if count != len(productsIds) {
+		WriteError(w, http.StatusBadRequest, "Um ou mais produtos não existem, não foram riscados ou já foram enviados")
+		return
+	}
+
+	err = e.DB.QueryRow(
+		r.Context(),
+		`SELECT COUNT(1) FROM establishments
+		WHERE id = ANY($1)
+		AND deleted_at IS NULL`,
+		establishmentIds,
+	).Scan(&count)
+	if err != nil {
+		fmt.Printf("Database error count establishments: %v\n", err)
+		WriteError(w, http.StatusInternalServerError, "Validação de estabelecimentos falhou")
+		return
+	}
+	if count != len(establishmentIds) {
+		WriteError(w, http.StatusBadRequest, "Um ou mais estabelecimentos não existem")
+		return
+	}
+
+	transaction, err := e.DB.Begin(r.Context())
+	if err != nil {
+		fmt.Printf("Database error begin transaction: %v\n", err)
+		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
+		return
+	}
+	defer transaction.Rollback(r.Context())
+
+	_, err = transaction.Exec(
+		r.Context(),
+		`
+		CREATE TEMP TABLE temp_stock_batches
+		(LIKE stock_batches INCLUDING ALL)
+		ON COMMIT DROP;
+		`,
+	)
+	if err != nil {
+		fmt.Printf("Database error create temp stock batches: %v\n", err)
+		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
+		return
+	}
+
+	_, err = transaction.CopyFrom(
+		r.Context(),
+		pgx.Identifier{"temp_stock_batches"},
+		[]string{
+			"household_id",
+			"product_id",
+			"establishment_id",
+			"initial_quantity",
+			"remaining_quantity",
+			"unit_price",
+			"expiration_date",
+		},
+		pgx.CopyFromRows(tempStockBatchRows),
+	)
+	if err != nil {
+		fmt.Printf("Database error insert into temp stock batches: %v\n", err)
+		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
+		return
+	}
+
+	stockBatchesRows, err := transaction.Query(
+		r.Context(),
+		`
+		INSERT INTO stock_batches (
+			household_id,
+			product_id,
+			establishment_id,
+			initial_quantity,
+			remaining_quantity,
+			unit_price,
+			expiration_date
+		)
+		SELECT
+			household_id,
+			product_id,
+			establishment_id,
+			initial_quantity,
+			remaining_quantity,
+			unit_price,
+			expiration_date
+		FROM temp_stock_batches
+		RETURNING id, initial_quantity, $1
+		`,
+		models.TransactionPurchase,
+	)
+	if err != nil {
+		fmt.Printf("Database error stock batches: %v\n", err)
+		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
+		return
+	}
+	
+	stockTransactionRows := make([][]any, len(productsIds))
+	i := 0
+	for stockBatchesRows.Next() {
+		stockTransactionValues := make([]any, 3)
+		err = stockBatchesRows.Scan(
+			&stockTransactionValues[0],
+			&stockTransactionValues[1],
+			&stockTransactionValues[2],
+		)
+		if err != nil {
+			fmt.Printf("Database error: %v\n", err)
+			WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
+			return
+		}
+
+		stockTransactionRows[i] = stockTransactionValues
+		i++
+	}
+
+	_, err = transaction.CopyFrom(
+		r.Context(),
+		pgx.Identifier{"stock_transactions"},
+		[]string{
+			"batch_id",
+			"quantity",
+			"type",
+		},
+		pgx.CopyFromRows(stockTransactionRows),
+	)
+	if err != nil {
+		fmt.Printf("Database error temp stock batches: %v\n", err)
+		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
+		return
+	}
+
+	err = transaction.QueryRow(
+		r.Context(),
+		`
+		UPDATE shopping_list_items
+		SET deleted_at = NOW()
+		WHERE id = ANY($1)
+		AND deleted_at IS NULL
+		RETURNING id
+		`,
+		productsIds,
+	).Scan(nil)
+	if err != nil {
+		fmt.Printf("Database error update shopping list: %v\n", err)
+		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
+		return
+	}
+
+	transaction.Commit(r.Context())
+	WriteJSON(w, http.StatusOK, nil, "Lista enviada com sucesso")
+}
