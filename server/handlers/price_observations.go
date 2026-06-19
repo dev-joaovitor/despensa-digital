@@ -28,16 +28,13 @@ func (e *Env) CreatePriceObservationHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	transaction, err := e.DB.Begin(r.Context())
-
 	if err != nil {
-		if transaction != nil {
-			transaction.Rollback(r.Context())
-		}
 		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
 		return
 	}
+	defer transaction.Rollback(r.Context())
 
-	err = e.DB.QueryRow(
+	err = transaction.QueryRow(
 		r.Context(),
 		`
 		SELECT id
@@ -48,7 +45,6 @@ func (e *Env) CreatePriceObservationHandler(w http.ResponseWriter, r *http.Reque
 		providedPriceObservation.ProductID,
 	).Scan(nil)
 	if err != nil {
-		transaction.Rollback(r.Context())
 		if errors.Is(err, sql.ErrNoRows) {
 			WriteError(w, http.StatusNotFound, "Produto não encontrado")
 			return
@@ -58,7 +54,7 @@ func (e *Env) CreatePriceObservationHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	err = e.DB.QueryRow(
+	err = transaction.QueryRow(
 		r.Context(),
 		`
 		SELECT id
@@ -69,7 +65,6 @@ func (e *Env) CreatePriceObservationHandler(w http.ResponseWriter, r *http.Reque
 		providedPriceObservation.EstablishmentID,
 	).Scan(nil)
 	if err != nil {
-		transaction.Rollback(r.Context())
 		if errors.Is(err, sql.ErrNoRows) {
 			WriteError(w, http.StatusNotFound, "Estabelecimento não encontrado")
 			return
@@ -82,7 +77,7 @@ func (e *Env) CreatePriceObservationHandler(w http.ResponseWriter, r *http.Reque
 	var createdPriceObservation models.PriceObservation
 	sessionHousehold, err := e.GetSessionUserHousehold(r.Context())
 
-	err = e.DB.QueryRow(
+	err = transaction.QueryRow(
 		r.Context(),
 		`
 		INSERT INTO price_observations (household_id, product_id, establishment_id, observed_price, observed_at)
@@ -102,7 +97,6 @@ func (e *Env) CreatePriceObservationHandler(w http.ResponseWriter, r *http.Reque
 		&createdPriceObservation.ObservedAt,
 	)
 	if err != nil {
-		transaction.Rollback(r.Context())
 		fmt.Printf("Database error: %v\n", err)
 		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
 		return

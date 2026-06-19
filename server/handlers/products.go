@@ -26,25 +26,20 @@ func (e *Env) CreateProductHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	transaction, err := e.DB.Begin(r.Context())
-
 	if err != nil {
-		if transaction != nil {
-			transaction.Rollback(r.Context())
-		}
-
 		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
 		return
 	}
+	defer transaction.Rollback(r.Context())
 
 	sessionHousehold, err := e.GetSessionUserHousehold(r.Context())
 	if err != nil {
-		transaction.Rollback(r.Context())
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	var createdProduct models.Product
-	err = e.DB.QueryRow(
+	err = transaction.QueryRow(
 		r.Context(),
 		`
 		INSERT INTO products (household_id, brand_id, measurement_id,
@@ -71,7 +66,6 @@ func (e *Env) CreateProductHandler(w http.ResponseWriter, r *http.Request) {
 		&createdProduct.UpdatedAt,
 	)
 	if err != nil {
-		transaction.Rollback(r.Context())
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}

@@ -31,25 +31,20 @@ func (e *Env) CreateCategoryHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	transaction, err := e.DB.Begin(r.Context())
-
 	if err != nil {
-		if transaction != nil {
-			transaction.Rollback(r.Context())
-		}
-
 		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
 		return
 	}
+	defer transaction.Rollback(r.Context())
 
 	var createdCategory models.Category
 	userHousehold, err := e.GetSessionUserHousehold(r.Context())
 	if err != nil {
-		transaction.Rollback(r.Context())
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	err = e.DB.QueryRow(
+	err = transaction.QueryRow(
 		r.Context(),
 		`
 		INSERT INTO categories (household_id, name)
@@ -65,9 +60,7 @@ func (e *Env) CreateCategoryHandler(w http.ResponseWriter, r *http.Request) {
 		&createdCategory.CreatedAt,
 		&createdCategory.UpdatedAt,
 	)
-
 	if err != nil {
-		transaction.Rollback(r.Context())
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -99,17 +92,13 @@ func (e *Env) UpdateCategoryHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	transaction, err := e.DB.Begin(r.Context())
-
 	if err != nil {
-		if transaction != nil {
-			transaction.Rollback(r.Context())
-		}
-
 		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
 		return
 	}
+	defer transaction.Rollback(r.Context())
 
-	_, err = e.DB.Query(
+	_, err = transaction.Query(
 		r.Context(),
 		`
 		UPDATE categories 
@@ -120,7 +109,6 @@ func (e *Env) UpdateCategoryHandler(w http.ResponseWriter, r *http.Request) {
 		categoryId,
 	)
 	if err != nil {
-		transaction.Rollback(r.Context())
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}

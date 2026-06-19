@@ -50,14 +50,12 @@ func (e *Env) UpdateHouseholdHandler(w http.ResponseWriter, r *http.Request) {
 
 	transaction, err := e.DB.Begin(r.Context())
 	if err != nil {
-		if transaction != nil {
-			transaction.Rollback(r.Context())
-		}
 		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
 		return
 	}
+	defer transaction.Rollback(r.Context())
 
-	err = e.DB.QueryRow(
+	err = transaction.QueryRow(
 		r.Context(),
 		`
 		UPDATE households
@@ -69,8 +67,6 @@ func (e *Env) UpdateHouseholdHandler(w http.ResponseWriter, r *http.Request) {
 		householdId,
 	).Scan(nil)
 	if err != nil {
-		transaction.Rollback(r.Context())
-
 		if errors.Is(err, sql.ErrNoRows) {
 			WriteError(w, http.StatusNotFound, "Residência não encontrada")
 			return
@@ -112,14 +108,12 @@ func (e *Env) GenerateCodeHandler(w http.ResponseWriter, r *http.Request) {
 
 	transaction, err := e.DB.Begin(r.Context())
 	if err != nil {
-		if transaction != nil {
-			transaction.Rollback(r.Context())
-		}
 		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
 		return
 	}
+	defer transaction.Rollback(r.Context())
 
-	err = e.DB.QueryRow(
+	err = transaction.QueryRow(
 		r.Context(),
 		`
 		UPDATE households
@@ -131,8 +125,6 @@ func (e *Env) GenerateCodeHandler(w http.ResponseWriter, r *http.Request) {
 		householdId,
 	).Scan(nil)
 	if err != nil {
-		transaction.Rollback(r.Context())
-
 		if errors.Is(err, sql.ErrNoRows) {
 			WriteError(w, http.StatusNotFound, "Residência não encontrada")
 			return

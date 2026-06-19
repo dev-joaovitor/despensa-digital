@@ -31,25 +31,20 @@ func (e *Env) CreateEstablishmentHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	transaction, err := e.DB.Begin(r.Context())
-
 	if err != nil {
-		if transaction != nil {
-			transaction.Rollback(r.Context())
-		}
-
 		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
 		return
 	}
+	defer transaction.Rollback(r.Context())
 
 	var createdEstablishment models.Establishment
 	userHousehold, err := e.GetSessionUserHousehold(r.Context())
 	if err != nil {
-		transaction.Rollback(r.Context())
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	err = e.DB.QueryRow(
+	err = transaction.QueryRow(
 		r.Context(),
 		`
 		INSERT INTO establishments (household_id, name)
@@ -67,7 +62,6 @@ func (e *Env) CreateEstablishmentHandler(w http.ResponseWriter, r *http.Request)
 	)
 
 	if err != nil {
-		transaction.Rollback(r.Context())
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -99,17 +93,13 @@ func (e *Env) UpdateEstablishmentHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	transaction, err := e.DB.Begin(r.Context())
-
 	if err != nil {
-		if transaction != nil {
-			transaction.Rollback(r.Context())
-		}
-
 		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
 		return
 	}
+	defer transaction.Rollback(r.Context())
 
-	_, err = e.DB.Query(
+	_, err = transaction.Query(
 		r.Context(),
 		`
 		UPDATE establishments 
@@ -120,7 +110,6 @@ func (e *Env) UpdateEstablishmentHandler(w http.ResponseWriter, r *http.Request)
 		establishmentId,
 	)
 	if err != nil {
-		transaction.Rollback(r.Context())
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}

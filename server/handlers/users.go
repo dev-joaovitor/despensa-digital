@@ -34,31 +34,26 @@ func (e *Env) CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	transaction, err := e.DB.Begin(r.Context())
-
 	if err != nil {
-		if transaction != nil {
-			transaction.Rollback(r.Context())
-		}
 		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
 		return
 	}
+	defer transaction.Rollback(r.Context())
 
 	var foundHousehold models.Household
 
 	if providedUser.InvitationCode != nil {
-		householdQuery := `
+		err = transaction.QueryRow(
+			r.Context(),
+			`
 			SELECT id FROM households
 			WHERE invitation_code = $1
 			LIMIT 1
-		`
-		err = e.DB.QueryRow(
-			r.Context(),
-			householdQuery,
+			`,
 			&providedUser.InvitationCode,
 		).Scan(&foundHousehold.ID)
 
 		if errors.Is(err, sql.ErrNoRows) {
-			transaction.Rollback(r.Context())
 			WriteError(w, http.StatusUnprocessableEntity, "Residência não encontrada com o código inserido")
 			return
 		}
@@ -70,7 +65,6 @@ func (e *Env) CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 		`
 		invitationCode, err := uuid.NewRandom()
 		if err != nil {
-			transaction.Rollback(r.Context())
 			WriteError(
 				w,
 				http.StatusInternalServerError,
@@ -79,7 +73,7 @@ func (e *Env) CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err = e.DB.QueryRow(
+		err = transaction.QueryRow(
 			r.Context(),
 			householdQuery,
 			&providedUser.HouseholdName,
@@ -87,7 +81,6 @@ func (e *Env) CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 		).Scan(&foundHousehold.ID)
 
 		if err != nil {
-			transaction.Rollback(r.Context())
 			WriteError(
 				w,
 				http.StatusBadRequest,
@@ -96,7 +89,6 @@ func (e *Env) CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	} else {
-		transaction.Rollback(r.Context())
 		WriteError(w, http.StatusUnprocessableEntity, "É obrigatório ter uma residência")
 		return
 	}
@@ -110,12 +102,11 @@ func (e *Env) CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 	var createdUser models.User
 	hashedPassword, err := e.HashPassword(providedUser.Password)
 	if err != nil {
-		transaction.Rollback(r.Context())
 		WriteError(w, http.StatusInternalServerError, "Criptografia de senhas falhou")
 		return 
 	}
 
-	err = e.DB.QueryRow(
+	err = transaction.QueryRow(
 		r.Context(),
 		userQuery,
 		&providedUser.FullName,
@@ -132,7 +123,6 @@ func (e *Env) CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 	)
 
 	if err != nil {
-		transaction.Rollback(r.Context())
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -143,7 +133,7 @@ func (e *Env) CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 			SET creator_id = $1
 			WHERE id = $2
 		`
-		_, err = e.DB.Query(
+		_, err = transaction.Query(
 			r.Context(),
 			updateHouseholdQuery,
 			&createdUser.ID,
@@ -151,7 +141,6 @@ func (e *Env) CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 		)
 
 		if err != nil {
-			transaction.Rollback(r.Context())
 			WriteError(w, http.StatusBadRequest, err.Error())
 			return
 		}
@@ -174,21 +163,17 @@ func (e *Env) UpdateUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	transaction, err := e.DB.Begin(r.Context())
-
 	if err != nil {
-		if transaction != nil {
-			transaction.Rollback(r.Context())
-		}
-
 		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
 		return
 	}
+	defer transaction.Rollback(r.Context())
 
 	userId := e.GetSessionUserId(r.Context())
 
 	var foundUser models.User
 
-	err = e.DB.QueryRow(
+	err = transaction.QueryRow(
 		r.Context(),
 		`
 		SELECT id, password
@@ -201,13 +186,12 @@ func (e *Env) UpdateUserHandler(w http.ResponseWriter, r *http.Request) {
 		&foundUser.Password,
 	)
 	if err != nil {
-		transaction.Rollback(r.Context())
 		WriteError(w, http.StatusBadRequest, "Não foi possível atualizar o usuário")
 		return
 	}
 
 	if providedUser.FullName != "" {
-		e.DB.QueryRow(
+		transaction.QueryRow(
 			r.Context(),
 			`
 			UPDATE users
@@ -220,7 +204,7 @@ func (e *Env) UpdateUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if providedUser.Email != "" {
-		e.DB.QueryRow(
+		transaction.QueryRow(
 			r.Context(),
 			`
 			UPDATE users
@@ -234,7 +218,7 @@ func (e *Env) UpdateUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	if providedUser.NewPassword != "" {
 		if providedUser.Code != "" {
-			_, err = e.DB.Query(
+			_, err = transaction.Query(
 				r.Context(),
 				`
 				SELECT id
@@ -248,13 +232,11 @@ func (e *Env) UpdateUserHandler(w http.ResponseWriter, r *http.Request) {
 				providedUser.Code,
 			)
 			if err != nil {
-				transaction.Rollback(r.Context())
 				WriteError(w, http.StatusUnprocessableEntity, "O código expirou ou está errado")
 				return 
 			}
 		} else {
 			if !e.ComparePassword(providedUser.OldPassword, foundUser.Password) {
-				transaction.Rollback(r.Context())
 				WriteError(w, http.StatusUnprocessableEntity, "Senha antiga está incorreta")
 				return 
 			}
@@ -262,13 +244,12 @@ func (e *Env) UpdateUserHandler(w http.ResponseWriter, r *http.Request) {
 
 		hashedPassword, err := e.HashPassword(providedUser.NewPassword)
 		if err != nil {
-			transaction.Rollback(r.Context())
 			fmt.Printf("Hash error: %s\n", err)
 			WriteError(w, http.StatusInternalServerError, "Criptografia de senhas falhou")
 			return 
 		}
 
-		e.DB.QueryRow(
+		transaction.QueryRow(
 			r.Context(),
 			`
 			UPDATE users
@@ -280,7 +261,7 @@ func (e *Env) UpdateUserHandler(w http.ResponseWriter, r *http.Request) {
 		)
 	}
 
-	e.DB.QueryRow(
+	transaction.QueryRow(
 		r.Context(),
 		`
 		UPDATE users
@@ -290,7 +271,6 @@ func (e *Env) UpdateUserHandler(w http.ResponseWriter, r *http.Request) {
 		userId,
 	)
 	if err != nil {
-		transaction.Rollback(r.Context())
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -302,18 +282,15 @@ func (e *Env) UpdateUserHandler(w http.ResponseWriter, r *http.Request) {
 func (e *Env) ListUsersHandler(w http.ResponseWriter, r *http.Request) {
 	var err error
 
-	query := `
+	rows, err := e.DB.Query(
+		r.Context(),
+		`
 		SELECT id, household_id, full_name, created_at, updated_at
 		FROM users
 		WHERE deleted_at IS NULL
 		ORDER BY created_at, updated_at DESC
-	`
-
-	rows, err := e.DB.Query(
-		r.Context(),
-		query,
+		`,
 	)
-
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
 		return
@@ -336,3 +313,4 @@ func (e *Env) ListUsersHandler(w http.ResponseWriter, r *http.Request) {
 
 	WriteJSON(w, http.StatusOK, users, "Usuários listados com sucesso")
 }
+
