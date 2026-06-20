@@ -321,6 +321,7 @@ func (e *Env) SubmitShoppingListHandler(w http.ResponseWriter, r *http.Request) 
 	var productsIds []int64
 	var establishmentIds []int64
 	tempStockBatchRows := make([][]any, len(providedShoppingList.Items))
+	priceObservationRows := make([][]any, len(providedShoppingList.Items))
 	for i, item  := range providedShoppingList.Items {
 		productsIds = append(productsIds, item.ProductID)
 		establishmentIds = append(establishmentIds, item.EstablishmentID)
@@ -332,6 +333,12 @@ func (e *Env) SubmitShoppingListHandler(w http.ResponseWriter, r *http.Request) 
 			item.Quantity, // remaining
 			item.Price,
 			item.ExpirationDate,
+		}
+		priceObservationRows[i] = []any{
+			sessionHousehold.ID,
+			item.ProductID,
+			item.EstablishmentID,
+			item.Price,
 		}
 	}
 
@@ -495,6 +502,23 @@ func (e *Env) SubmitShoppingListHandler(w http.ResponseWriter, r *http.Request) 
 	).Scan(nil)
 	if err != nil {
 		fmt.Printf("Database error update shopping list: %v\n", err)
+		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
+		return
+	}
+
+	_, err = transaction.CopyFrom(
+		r.Context(),
+		pgx.Identifier{"price_observations"},
+		[]string{
+			"household_id",
+			"product_id",
+			"establishment_id",
+			"observed_price",
+		},
+		pgx.CopyFromRows(priceObservationRows),
+	)
+	if err != nil {
+		fmt.Printf("Database error insert price observations: %v\n", err)
 		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
 		return
 	}
