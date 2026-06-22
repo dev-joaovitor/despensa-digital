@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/dev-joaovitor/despensa-digital/models"
 )
 
 // users
@@ -369,6 +371,51 @@ func SubmitShoppingListValidator(list *SubmitShoppingListDTO) error {
 		if item.Quantity <= 0 {
 			validationErrors = append(validationErrors, "Quantidade inválida.")
 		}
+	}
+
+	if len(validationErrors) == 0 {
+		return nil
+	}
+
+	return errors.New(strings.Join(validationErrors, " "))
+}
+
+// stock
+func TransactStockBatchValidator(transaction *TransactStockBatchDTO) error {
+	validationErrors := []string{}
+
+	switch transaction.Type {
+	case models.TransactionPurchase:
+		if transaction.ProductID == nil || *transaction.ProductID == 0 {
+			validationErrors = append(validationErrors, "Produto é obrigatório.")
+		}
+		if transaction.EstablishmentID == nil || *transaction.EstablishmentID == 0 {
+			validationErrors = append(validationErrors, "Estabelecimento é obrigatório.")
+		}
+		if transaction.UnitPrice == nil || *transaction.UnitPrice == 0.0 {
+			validationErrors = append(validationErrors, "Preço da unidade é obrigatório.")
+		}
+		if transaction.ExpirationDate == nil || *transaction.ExpirationDate == "" {
+			validationErrors = append(validationErrors, "Data de validade é obrigatório.")
+		}
+	case models.TransactionConsumption,
+		models.TransactionWaste,
+		models.TransactionCorrection:
+		if transaction.BatchID == nil || *transaction.BatchID == 0 {
+			validationErrors = append(validationErrors, "Lote é obrigatório.")
+		}
+	default:
+		validationErrors = append(validationErrors, "Tipo de operação é obrigatório.")
+	}
+
+	if transaction.Quantity == 0 {
+		validationErrors = append(validationErrors, "Quantidade é obrigatória.")
+	}
+	if transaction.Quantity < 0 {
+		validationErrors = append(validationErrors, "Quantidade deve ser positiva.")
+	}
+	if transaction.Quantity > 9999 {
+		validationErrors = append(validationErrors, "Quantidade não deve exceder 9999.")
 	}
 
 	if len(validationErrors) == 0 {

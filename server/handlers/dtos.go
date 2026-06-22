@@ -186,3 +186,48 @@ type SubmitShoppingListDTO struct {
 		Quantity int `json:"quantity"`
 	} `json:"items"`
 }
+
+// stock
+type ListStockProductsDTO struct {
+	ID int64 `json:"id"`
+	Name string `json:"name"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Brand struct {
+		Name string `json:"name"`
+	} `json:"brand"`
+	Category struct {
+		Name string `json:"name"`
+	} `json:"category"`
+	Measurement struct {
+		Size int64 `json:"size"`
+		Acronym string `json:"acronym"`
+	} `json:"measurement"`
+	Stock struct {
+		Initial int `json:"initial"`
+		Remaining int `json:"remaining"`
+	} `json:"stock"`
+}
+
+type ListStockProductBatchesDTO struct {
+	ID int64 `json:"id"`
+	UnitPrice float64 `json:"unit_price"`
+	InitialQuantity int `json:"initial_quantity"`
+	RemainingQuantity int `json:"remaining_quantity"`
+	ExpirationDate time.Time `json:"expiration_date"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Establishment struct {
+		Name string `json:"name"`
+	} `json:"establishment"`
+}
+
+type TransactStockBatchDTO struct {
+	Type models.StockTransactionType `json:"type"`
+	ProductID *int64 `json:"product_id"`
+	BatchID *int64 `json:"batch_id"`
+	EstablishmentID *int64 `json:"establishment_id"`
+	UnitPrice *float64 `json:"unit_price"`
+	ExpirationDate *string `json:"expiration_date"`
+	Quantity int `json:"quantity"`
+}

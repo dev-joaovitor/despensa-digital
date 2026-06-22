@@ -42,6 +42,7 @@ func (e *Env) LoadRoutes() http.Handler {
 			auth.Route("/products", e.ProductsHandler)
 			auth.Route("/unit-measurements", e.UnitMeasurementsHandler)
 			auth.Route("/shopping-list", e.ShoppingListHandler)
+			auth.Route("/stock", e.StockHandler)
 		})
 	})
 

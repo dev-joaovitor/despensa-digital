@@ -312,7 +312,6 @@ func (e *Env) SubmitShoppingListHandler(w http.ResponseWriter, r *http.Request) 
 	var providedShoppingList SubmitShoppingListDTO
 	ReadJSON(w, r, &providedShoppingList)
 	err = SubmitShoppingListValidator(&providedShoppingList)
-
 	if err != nil {
 		WriteError(w, http.StatusUnprocessableEntity, "Erro de validação: " + err.Error())
 		return
