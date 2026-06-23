@@ -24,7 +24,13 @@ func (e *Env) AuthHandler(r chi.Router) {
 	r.Group(func (auth chi.Router) {
 		auth.Use(e.AuthRequiredMiddleware)
 		auth.Post("/change-password", e.ChangePasswordHandler)
+		auth.Get("/me", e.MeHandler)
 	})
+}
+
+func (e *Env) MeHandler(w http.ResponseWriter, r *http.Request) {
+	userID := e.GetSessionUserId(r.Context())
+	WriteJSON(w, http.StatusOK, map[string]int64{"userID": userID}, "")
 }
 
 func ValidateLogin(login *LoginDTO) error {
