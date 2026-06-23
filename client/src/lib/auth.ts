@@ -1,10 +1,20 @@
 import { apiFetch } from '$lib/api';
 
-export async function isAuthenticated(): Promise<boolean> {
+export interface SessionUser {
+	id: number;
+	full_name: string;
+	email: string;
+}
+
+export async function getUser(): Promise<SessionUser | null> {
 	try {
-		const { status } = await apiFetch('/api/v1/auth/me');
-		return status === 200;
+		const { status, body } = await apiFetch<SessionUser>('/api/v1/auth/me');
+		return status === 200 && body.data ? body.data : null;
 	} catch {
-		return false;
+		return null;
 	}
+}
+
+export async function isAuthenticated(): Promise<boolean> {
+	return (await getUser()) !== null;
 }

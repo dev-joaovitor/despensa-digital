@@ -1,6 +1,8 @@
 import { redirect } from '@sveltejs/kit';
-import { isAuthenticated } from '$lib/auth';
+import { getUser } from '$lib/auth';
 
 export async function load() {
-	if (!(await isAuthenticated())) redirect(307, '/login');
+	const user = await getUser();
+	if (!user) redirect(307, '/login');
+	return { user };
 }
