@@ -68,6 +68,7 @@ func main() {
 		Cache: redisClient,
 		SessionState: sessionManager,
 		MailService: mailer,
+		ClientAppURL: cfg.ClientAppURL,
 	}
 
 	server := &http.Server{

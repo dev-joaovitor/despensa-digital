@@ -7,6 +7,7 @@ import (
 	"github.com/dev-joaovitor/despensa-digital/mail"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 )
@@ -17,11 +18,19 @@ type Env struct {
 	Cache        *redis.Client
 	SessionState *scs.SessionManager
 	MailService  *mail.MailService
+	ClientAppURL string
 }
 
 func (e *Env) LoadRoutes() http.Handler {
 	r := chi.NewRouter()
 
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{e.ClientAppURL},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Content-Type", "Authorization"},
+		AllowCredentials: true,
+		MaxAge:           300,
+	}))
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(e.SessionState.LoadAndSave)

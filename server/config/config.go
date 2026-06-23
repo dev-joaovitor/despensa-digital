@@ -16,6 +16,7 @@ type Config struct {
 	MailSMTPPassword string `env:"EMAIL_SMTP_PASSWORD" envRequired:"true"`
 	MailHTTPHost string `env:"EMAIL_HTTP_HOST" envRequired:"true"`
 	MailHTTPPort string `env:"EMAIL_HTTP_PASSWORD" envRequired:"true"`
+	ClientAppURL string `env:"CLIENT_APP_URL" envRequired:"true"`
 }
 
 func Load() (*Config, error) {
