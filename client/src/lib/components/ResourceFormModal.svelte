@@ -14,10 +14,11 @@
 		open?: boolean;
 		kind: ResourceKind;
 		item?: NamedResource | null;
+		initialName?: string;
 		onsuccess: (item: NamedResource) => void;
 	}
 
-	let { open = $bindable(false), kind, item = null, onsuccess }: Props = $props();
+	let { open = $bindable(false), kind, item = null, initialName = '', onsuccess }: Props = $props();
 
 	const config = $derived(RESOURCE_CONFIG[kind]);
 	const singular = $derived(config.singular);
@@ -35,7 +36,7 @@
 	// Reset local state whenever the modal opens for a (possibly different) item.
 	$effect(() => {
 		if (open) {
-			name = item?.name ?? '';
+			name = item?.name ?? initialName;
 			loading = false;
 			errorMsg = '';
 			added = false;

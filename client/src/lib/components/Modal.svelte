@@ -4,11 +4,12 @@
 	interface Props {
 		open?: boolean;
 		title?: string;
+		size?: 'sm' | 'lg';
 		onclose?: () => void;
 		children: Snippet;
 	}
 
-	let { open = $bindable(false), title, onclose, children }: Props = $props();
+	let { open = $bindable(false), title, size = 'sm', onclose, children }: Props = $props();
 
 	function close() {
 		open = false;
@@ -30,7 +31,7 @@
 			if (e.target === e.currentTarget) close();
 		}}
 	>
-		<div class="dialog" role="dialog" aria-modal="true" aria-label={title}>
+		<div class="dialog {size}" role="dialog" aria-modal="true" aria-label={title}>
 			{#if title}
 				<h2>{title}</h2>
 			{/if}
@@ -54,16 +55,24 @@
 	.dialog {
 		display: flex;
 		flex-direction: column;
-		align-items: center;
 		gap: var(--space-md);
 		width: 100%;
-		max-width: 28rem;
+		max-height: calc(100vh - 2 * var(--space-md));
 		padding: var(--space-lg);
-		text-align: center;
 		background-color: var(--color-bg);
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius);
 		box-shadow: var(--shadow);
+	}
+
+	.dialog.sm {
+		align-items: center;
+		max-width: 28rem;
+		text-align: center;
+	}
+
+	.dialog.lg {
+		max-width: 40rem;
 	}
 
 	h2 {
