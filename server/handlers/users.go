@@ -146,6 +146,7 @@ func (e *Env) CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	transaction.Commit(r.Context())
+	e.SessionState.Put(r.Context(), "userID", &createdUser.ID)
 	WriteJSON(w, http.StatusCreated, &createdUser, "Conta criada com sucesso")
 }
 
@@ -275,6 +276,7 @@ func (e *Env) UpdateUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	transaction.Commit(r.Context())
+	e.SessionState.RenewToken(r.Context())
 	WriteJSON(w, http.StatusOK, nil, "Conta atualizada com sucesso")
 }
 
