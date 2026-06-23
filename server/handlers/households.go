@@ -215,7 +215,7 @@ func (e *Env) VerifyHouseholdInvitationCodeHandler(w http.ResponseWriter, r *htt
 		&providedData.InvitationCode,
 	).Scan(nil)
 	if err != nil {
-		WriteError(w, http.StatusBadRequest, "Residência não encontrada")
+		WriteError(w, http.StatusNotFound, "Residência não encontrada")
 		return
 	}
 
