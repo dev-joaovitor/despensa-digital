@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dev-joaovitor/despensa-digital/models"
+	"github.com/google/uuid"
 )
 
 // users
@@ -102,6 +103,21 @@ func UpdateUserValidator(user *UpdateUserDTO) error {
 }
 
 // households
+func VerifyHouseholdInvitationCodeValidator(household *VerifyHouseholdInvitationCodeDTO) error {
+	validationErrors := []string{}
+
+	code := household.InvitationCode
+	if err := uuid.Validate(code); err != nil {
+		validationErrors = append(validationErrors, "Formato de código inválido")
+	}
+
+	if len(validationErrors) == 0 {
+		return nil
+	}
+
+	return errors.New(strings.Join(validationErrors, " "))
+}
+
 func UpdateHouseholdValidator(household *UpdateHouseholdDTO) error {
 	validationErrors := []string{}
 

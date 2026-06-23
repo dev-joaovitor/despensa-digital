@@ -47,6 +47,10 @@ type UpdateUserDTO struct {
 }
 
 // households
+type VerifyHouseholdInvitationCodeDTO struct {
+	InvitationCode string `json:"invitation_code"`
+}
+
 type UpdateHouseholdDTO struct {
 	Name string `json:"name"`
 }

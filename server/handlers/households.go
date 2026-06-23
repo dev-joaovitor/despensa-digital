@@ -13,9 +13,14 @@ import (
 )
 
 func (e *Env) HouseholdsHandler(r chi.Router) {
-	r.Get("/", e.GetHouseholdHandler)
-	r.Patch("/", e.UpdateHouseholdHandler)
-	r.Post("/code", e.GenerateCodeHandler)
+	r.Post("/verify-invitation-code", e.VerifyHouseholdInvitationCodeHandler)
+
+	r.Group(func (auth chi.Router) {
+		auth.Use(e.AuthRequiredMiddleware)
+		r.Get("/", e.GetHouseholdHandler)
+		r.Patch("/", e.UpdateHouseholdHandler)
+		r.Post("/code", e.GenerateCodeHandler)
+	})
 }
 
 func (e *Env) UpdateHouseholdHandler(w http.ResponseWriter, r *http.Request) {
@@ -182,4 +187,37 @@ func (e *Env) GetSessionUserHousehold(ctx context.Context) (*models.Household, e
 	}
 
 	return &foundHousehold, nil
+}
+
+func (e *Env) VerifyHouseholdInvitationCodeHandler(w http.ResponseWriter, r *http.Request) {
+	var providedData VerifyHouseholdInvitationCodeDTO
+	ReadJSON(w, r, &providedData)
+	err := VerifyHouseholdInvitationCodeValidator(&providedData)
+	if err != nil {
+		WriteError(w, http.StatusUnprocessableEntity, "Erro de validação: " + err.Error())
+		return
+	}
+
+	transaction, err := e.DB.Begin(r.Context())
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
+		return
+	}
+	defer transaction.Rollback(r.Context())
+
+	err = transaction.QueryRow(
+		r.Context(),
+		`
+		SELECT id FROM households
+		WHERE invitation_code = $1
+		LIMIT 1
+		`,
+		&providedData.InvitationCode,
+	).Scan(nil)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, "Residência não encontrada")
+		return
+	}
+
+	WriteJSON(w, http.StatusOK, nil, "Residência encontrada com sucesso")
 }

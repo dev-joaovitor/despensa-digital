@@ -27,7 +27,6 @@ func (e *Env) CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 	var providedUser CreateUserDTO
 	ReadJSON(w, r, &providedUser)
 	err = CreateUserValidator(&providedUser)
-
 	if err != nil {
 		WriteError(w, http.StatusUnprocessableEntity, "Erro de validação: " + err.Error())
 		return
