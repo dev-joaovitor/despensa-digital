@@ -249,7 +249,9 @@ func (e *Env) ListPriceObservationsHandler(w http.ResponseWriter, r *http.Reques
 	search := query.Get("search")
 	if search != "" {
 		search = "%" + search + "%"
-		searchQuery = `AND p.name ILIKE $2`
+		searchQuery = `
+		AND (p.name ILIKE $2 OR b.name ILIKE $2)
+		`
 	}
 
 	priceObservations := []ListPriceObservationsDTO{}
