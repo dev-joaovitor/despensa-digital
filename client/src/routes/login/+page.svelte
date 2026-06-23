@@ -41,12 +41,12 @@
 </script>
 
 <svelte:head>
-	<title>Login — Despensa Digital</title>
+	<title>Login — IntelliStock</title>
 </svelte:head>
 
 <main>
 	<form class="login-card" onsubmit={handleSubmit}>
-		<img class="logo" src={logo} alt="Despensa Digital" />
+		<img class="logo" src={logo} alt="IntelliStock" />
 
 		<h1>Login</h1>
 
