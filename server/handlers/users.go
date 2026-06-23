@@ -45,12 +45,15 @@ func (e *Env) CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 		err = transaction.QueryRow(
 			r.Context(),
 			`
-			SELECT id FROM households
+			SELECT id, creator_id FROM households
 			WHERE invitation_code = $1
 			LIMIT 1
 			`,
 			&providedUser.InvitationCode,
-		).Scan(&foundHousehold.ID)
+		).Scan(
+			&foundHousehold.ID,
+			&foundHousehold.CreatorID,
+		)
 
 		if errors.Is(err, sql.ErrNoRows) {
 			WriteError(w, http.StatusUnprocessableEntity, "Residência não encontrada com o código inserido")
