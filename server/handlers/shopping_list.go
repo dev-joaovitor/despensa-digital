@@ -494,7 +494,7 @@ func (e *Env) SubmitShoppingListHandler(w http.ResponseWriter, r *http.Request) 
 		`
 		UPDATE shopping_list_items
 		SET deleted_at = NOW()
-		WHERE id = ANY($1)
+		WHERE product_id = ANY($1)
 		AND deleted_at IS NULL
 		RETURNING id
 		`,

@@ -8,6 +8,7 @@
 		label?: string;
 		placeholder?: string;
 		oncreate?: (text: string) => void;
+		onchange?: (value: number) => void;
 	}
 
 	let {
@@ -16,7 +17,8 @@
 		value = $bindable(null),
 		label,
 		placeholder,
-		oncreate
+		oncreate,
+		onchange
 	}: Props = $props();
 
 	let text = $state('');
@@ -40,6 +42,7 @@
 		value = item.id;
 		text = getLabel(item);
 		open = false;
+		onchange?.(item.id);
 	}
 
 	function handleInput() {
