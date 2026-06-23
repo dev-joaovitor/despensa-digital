@@ -198,7 +198,7 @@ func (e *Env) UpdateUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if providedUser.FullName != "" {
-		transaction.QueryRow(
+		_, err = transaction.Exec(
 			r.Context(),
 			`
 			UPDATE users
@@ -208,10 +208,15 @@ func (e *Env) UpdateUserHandler(w http.ResponseWriter, r *http.Request) {
 			providedUser.FullName,
 			userId,
 		)
+		if err != nil {
+			fmt.Printf("Database error update user: %v\n", err)
+			WriteError(w, http.StatusBadRequest, "Não foi possível atualizar o usuário")
+			return
+		}
 	}
 
 	if providedUser.Email != "" {
-		transaction.QueryRow(
+		_, err = transaction.Exec(
 			r.Context(),
 			`
 			UPDATE users
@@ -221,11 +226,16 @@ func (e *Env) UpdateUserHandler(w http.ResponseWriter, r *http.Request) {
 			providedUser.Email,
 			userId,
 		)
+		if err != nil {
+			fmt.Printf("Database error update user: %v\n", err)
+			WriteError(w, http.StatusBadRequest, "Não foi possível atualizar o usuário")
+			return
+		}
 	}
 
 	if providedUser.NewPassword != "" {
 		if providedUser.Code != "" {
-			_, err = transaction.Exec(
+			err = transaction.QueryRow(
 				r.Context(),
 				`
 				SELECT id
@@ -237,7 +247,7 @@ func (e *Env) UpdateUserHandler(w http.ResponseWriter, r *http.Request) {
 				`,
 				userId,
 				providedUser.Code,
-			)
+			).Scan(nil)
 			if err != nil {
 				WriteError(w, http.StatusUnprocessableEntity, "O código expirou ou está errado")
 				return 
@@ -256,7 +266,7 @@ func (e *Env) UpdateUserHandler(w http.ResponseWriter, r *http.Request) {
 			return 
 		}
 
-		transaction.QueryRow(
+		_, err = transaction.Exec(
 			r.Context(),
 			`
 			UPDATE users
@@ -266,9 +276,14 @@ func (e *Env) UpdateUserHandler(w http.ResponseWriter, r *http.Request) {
 			hashedPassword,
 			userId,
 		)
+		if err != nil {
+			fmt.Printf("Database error update user: %v\n", err)
+			WriteError(w, http.StatusBadRequest, "Não foi possível atualizar o usuário")
+			return
+		}
 	}
 
-	transaction.QueryRow(
+	_, err = transaction.Exec(
 		r.Context(),
 		`
 		UPDATE users
@@ -278,11 +293,16 @@ func (e *Env) UpdateUserHandler(w http.ResponseWriter, r *http.Request) {
 		userId,
 	)
 	if err != nil {
-		WriteError(w, http.StatusBadRequest, err.Error())
+		fmt.Printf("Database error update user: %v\n", err)
+		WriteError(w, http.StatusBadRequest, "Não foi possível atualizar o usuário")
 		return
 	}
 
-	transaction.Commit(r.Context())
+	err = transaction.Commit(r.Context())
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
 	e.SessionState.RenewToken(r.Context())
 	WriteJSON(w, http.StatusOK, nil, "Conta atualizada com sucesso")
 }
