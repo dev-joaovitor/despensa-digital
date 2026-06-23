@@ -30,7 +30,19 @@ func (e *Env) AuthHandler(r chi.Router) {
 
 func (e *Env) MeHandler(w http.ResponseWriter, r *http.Request) {
 	userID := e.GetSessionUserId(r.Context())
-	WriteJSON(w, http.StatusOK, map[string]int64{"userID": userID}, "")
+
+	var user models.User
+	err := e.DB.QueryRow(
+		r.Context(),
+		`SELECT id, full_name, email FROM users WHERE id = $1 AND deleted_at IS NULL LIMIT 1`,
+		userID,
+	).Scan(&user.ID, &user.FullName, &user.Email)
+	if err != nil {
+		WriteError(w, http.StatusUnauthorized, "Sessão inválida")
+		return
+	}
+
+	WriteJSON(w, http.StatusOK, user, "")
 }
 
 func ValidateLogin(login *LoginDTO) error {
