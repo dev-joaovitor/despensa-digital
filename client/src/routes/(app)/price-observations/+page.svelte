@@ -13,6 +13,9 @@
 
 	let searchValue = $state(data.search);
 	let establishments = $state(data.establishments);
+	let products = $state(data.products);
+	let brands = $state(data.brands);
+	let categories = $state(data.categories);
 
 	let addOpen = $state(false);
 	let historyOpen = $state(false);
@@ -25,6 +28,18 @@
 
 	$effect(() => {
 		establishments = data.establishments;
+	});
+
+	$effect(() => {
+		products = data.products;
+	});
+
+	$effect(() => {
+		brands = data.brands;
+	});
+
+	$effect(() => {
+		categories = data.categories;
 	});
 
 	function handleSearch(query: string) {
@@ -67,8 +82,11 @@
 
 <AddPriceObservationModal
 	bind:open={addOpen}
-	products={data.products}
+	bind:products
 	bind:establishments
+	bind:brands
+	bind:categories
+	measurements={data.measurements}
 	onsuccess={invalidateAll}
 />
 

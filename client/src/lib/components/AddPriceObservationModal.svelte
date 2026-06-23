@@ -4,24 +4,32 @@
 	import MoneyInput from './MoneyInput.svelte';
 	import PrimaryButton from './PrimaryButton.svelte';
 	import ResourceFormModal from './ResourceFormModal.svelte';
+	import ProductFormModal from './ProductFormModal.svelte';
 	import type { NamedResource } from '$lib/resources';
 	import {
 		createPriceObservation,
 		productLabel,
-		type Product
+		type Product,
+		type UnitMeasurement
 	} from '$lib/price-observations';
 
 	interface Props {
 		open?: boolean;
 		products: Product[];
 		establishments: NamedResource[];
+		brands: NamedResource[];
+		categories: NamedResource[];
+		measurements: UnitMeasurement[];
 		onsuccess: () => void;
 	}
 
 	let {
 		open = $bindable(false),
-		products,
+		products = $bindable(),
 		establishments = $bindable(),
+		brands = $bindable(),
+		categories = $bindable(),
+		measurements,
 		onsuccess
 	}: Props = $props();
 
@@ -34,6 +42,9 @@
 
 	let establishmentFormOpen = $state(false);
 	let establishmentInitialName = $state('');
+
+	let productFormOpen = $state(false);
+	let productInitialName = $state('');
 
 	function reset() {
 		productId = null;
@@ -89,6 +100,16 @@
 		establishments = [...establishments, item];
 		establishmentId = item.id;
 	}
+
+	function openCreateProduct(text: string) {
+		productInitialName = text;
+		productFormOpen = true;
+	}
+
+	function handleProductCreated(product: Product) {
+		products = [...products, product];
+		productId = product.id;
+	}
 </script>
 
 <Modal bind:open title="Observação de preço">
@@ -106,6 +127,7 @@
 				items={products}
 				getLabel={productLabel}
 				bind:value={productId}
+				oncreate={openCreateProduct}
 			/>
 			<SearchSelect
 				label="Estabelecimento"
@@ -129,6 +151,15 @@
 	kind="establishments"
 	initialName={establishmentInitialName}
 	onsuccess={handleEstablishmentCreated}
+/>
+
+<ProductFormModal
+	bind:open={productFormOpen}
+	initialName={productInitialName}
+	bind:brands
+	bind:categories
+	{measurements}
+	onsuccess={handleProductCreated}
 />
 
 <style>

@@ -89,7 +89,7 @@ func (e *Env) ListProductsHandler(w http.ResponseWriter, r *http.Request) {
 		FROM products p
 		JOIN brands b ON p.brand_id = b.id
 		JOIN unit_measurements um ON p.measurement_id = um.id
-		JOIN categories c ON p.measurement_id = c.id
+		JOIN categories c ON p.category_id = c.id
 		WHERE p.deleted_at IS NULL
 		AND p.household_id = $1
 		ORDER BY p.created_at, p.updated_at DESC

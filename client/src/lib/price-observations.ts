@@ -9,6 +9,12 @@ export interface Measurement {
 	acronym: string;
 }
 
+export interface UnitMeasurement {
+	id: number;
+	name: string;
+	acronym: string;
+}
+
 export interface Product {
 	id: number;
 	name: string;
@@ -53,6 +59,29 @@ export async function listPriceObservations(search?: string): Promise<PriceObser
 export async function listProducts(): Promise<Product[]> {
 	const { status, body } = await apiFetch<Product[]>('/api/v1/products');
 	return status === 200 && body.data ? body.data : [];
+}
+
+export async function listUnitMeasurements(): Promise<UnitMeasurement[]> {
+	const { status, body } = await apiFetch<UnitMeasurement[]>('/api/v1/unit-measurements');
+	return status === 200 && body.data ? body.data : [];
+}
+
+export interface CreateProductInput {
+	name: string;
+	brand_id: number;
+	measurement_id: number;
+	category_id: number;
+	unit_size: number;
+}
+
+export async function createProduct(
+	input: CreateProductInput
+): Promise<{ ok: boolean; data?: { id: number }; message?: string }> {
+	const { status, body } = await apiFetch<{ id: number }>('/api/v1/products', {
+		method: 'POST',
+		body: JSON.stringify(input)
+	});
+	return { ok: status === 201 && !body.error, data: body.data, message: body.message };
 }
 
 export async function createPriceObservation(
