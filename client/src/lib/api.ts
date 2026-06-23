@@ -21,6 +21,8 @@ export async function apiFetch<T = unknown>(
 		...init
 	});
 
-	const body = (await response.json()) as ApiResponse<T>;
+	// Some responses (e.g. 304 Not Modified) may carry an empty body.
+	const text = await response.text();
+	const body = (text ? JSON.parse(text) : { error: false }) as ApiResponse<T>;
 	return { status: response.status, body };
 }
