@@ -128,7 +128,7 @@ func (e *Env) SendRecoveryCodeHandler(w http.ResponseWriter, r *http.Request) {
 		if err == nil {
 			err = e.MailService.SendPasswordReset(email, generatedCode)
 			if err == nil {
-				_, err = e.DB.Query(
+				_, err = e.DB.Exec(
 					r.Context(),
 					`
 					UPDATE users

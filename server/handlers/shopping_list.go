@@ -452,6 +452,7 @@ func (e *Env) SubmitShoppingListHandler(w http.ResponseWriter, r *http.Request) 
 		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
 		return
 	}
+	defer stockBatchesRows.Close()
 	
 	stockTransactionRows := make([][]any, len(productsIds))
 	i := 0

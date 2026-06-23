@@ -98,7 +98,7 @@ func (e *Env) UpdateCategoryHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer transaction.Rollback(r.Context())
 
-	_, err = transaction.Query(
+	_, err = transaction.Exec(
 		r.Context(),
 		`
 		UPDATE categories 

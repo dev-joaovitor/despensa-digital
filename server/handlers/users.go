@@ -132,20 +132,24 @@ func (e *Env) CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 			SET creator_id = $1
 			WHERE id = $2
 		`
-		_, err = transaction.Query(
+		_, err := transaction.Exec(
 			r.Context(),
 			updateHouseholdQuery,
 			&createdUser.ID,
 			&foundHousehold.ID,
 		)
-
 		if err != nil {
 			WriteError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 	}
 
-	transaction.Commit(r.Context())
+	err = transaction.Commit(r.Context())
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
 	e.SessionState.Put(r.Context(), "userID", &createdUser.ID)
 	WriteJSON(w, http.StatusCreated, &createdUser, "Conta criada com sucesso")
 }
@@ -218,7 +222,7 @@ func (e *Env) UpdateUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	if providedUser.NewPassword != "" {
 		if providedUser.Code != "" {
-			_, err = transaction.Query(
+			_, err = transaction.Exec(
 				r.Context(),
 				`
 				SELECT id
