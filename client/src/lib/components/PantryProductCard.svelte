@@ -92,7 +92,7 @@
 		align-items: center;
 		justify-content: center;
 		height: 1.5rem;
-		margin: var(--space-sm) calc(-1 * var(--space-md)) calc(-1 * var(--space-md));
+		margin: auto calc(-1 * var(--space-md)) calc(-1 * var(--space-md));
 		background-color: var(--color-border);
 	}
 
