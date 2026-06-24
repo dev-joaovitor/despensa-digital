@@ -25,21 +25,39 @@ func (e *Env) ListStockProductsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	query := r.URL.Query()
+	searchQuery := "AND $2 = $2"
+
+	search := query.Get("search")
+	if search != "" {
+		search = "%" + search + "%"
+		searchQuery = `
+		AND (
+			p.name ILIKE $2 OR b.name ILIKE $2
+			OR c.name ILIKE $2
+		)
+		`
+	}
+
 	rows, err := e.DB.Query(
 		r.Context(),
 		`
-		SELECT p.id, p.name, p.created_at, p.updated_at, b.name, p.unit_size,
-			um.acronym, c.name, sb.initial_quantity, sb.remaining_quantity
+		SELECT p.id, p.name, p.created_at, p.updated_at, b.id, b.name, p.unit_size,
+			um.id, um.acronym, c.id, c.name, COALESCE(SUM(sb.initial_quantity), 0) initial,
+			COALESCE(SUM(sb.remaining_quantity), 0) remaining
 		FROM products p
 		JOIN brands b ON p.brand_id = b.id
 		JOIN unit_measurements um ON p.measurement_id = um.id
-		JOIN categories c ON p.measurement_id = c.id
+		JOIN categories c ON p.category_id = c.id
 		LEFT JOIN stock_batches sb ON sb.product_id = p.id
 		WHERE p.deleted_at IS NULL
 		AND p.household_id = $1
+		` + searchQuery + `
+		GROUP BY p.id, b.id, b.name, um.id, um.acronym, c.id, c.name
 		ORDER BY p.created_at, p.updated_at DESC
 		`,
 		&sessionHousehold.ID,
+		search,
 	)
 	if err != nil {
 		fmt.Printf("Database error: %v\n", err)
@@ -57,9 +75,12 @@ func (e *Env) ListStockProductsHandler(w http.ResponseWriter, r *http.Request) {
 			&product.Name,
 			&product.CreatedAt,
 			&product.UpdatedAt,
+			&product.Brand.ID,
 			&product.Brand.Name,
 			&product.Measurement.Size,
+			&product.Measurement.ID,
 			&product.Measurement.Acronym,
+			&product.Category.ID,
 			&product.Category.Name,
 			&product.Stock.Initial,
 			&product.Stock.Remaining,

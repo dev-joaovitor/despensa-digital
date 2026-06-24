@@ -11,6 +11,7 @@ import (
 func (e *Env) ProductsHandler(r chi.Router) {
 	r.Post("/", e.CreateProductHandler)
 	r.Get("/", e.ListProductsHandler)
+	r.Patch("/{id}", e.UpdateProductHandler)
 }
 
 func (e *Env) CreateProductHandler(w http.ResponseWriter, r *http.Request) {
@@ -72,6 +73,62 @@ func (e *Env) CreateProductHandler(w http.ResponseWriter, r *http.Request) {
 
 	transaction.Commit(r.Context())
 	WriteJSON(w, http.StatusCreated, &createdProduct, "Produto criado com sucesso")
+}
+
+func (e *Env) UpdateProductHandler(w http.ResponseWriter, r *http.Request) {
+	var err error
+
+	var providedProduct UpdateProductDTO
+	ReadJSON(w, r, &providedProduct)
+	err = UpdateProductValidator(&providedProduct)
+	if err != nil {
+		WriteError(w, http.StatusUnprocessableEntity, "Erro de validação: " + err.Error())
+		return
+	}
+
+	productId := r.PathValue("id")
+	if productId == "" {
+		WriteError(w, http.StatusBadRequest, "Insira um ID")
+		return
+	}
+
+	transaction, err := e.DB.Begin(r.Context())
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
+		return
+	}
+	defer transaction.Rollback(r.Context())
+
+	sessionHousehold, err := e.GetSessionUserHousehold(r.Context())
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	_, err = transaction.Exec(
+		r.Context(),
+		`
+		UPDATE products
+		SET brand_id = $1, measurement_id = $2, category_id = $3,
+			name = $4, unit_size = $5, updated_at = NOW()
+		WHERE id = $6
+		AND household_id = $7
+		`,
+		&providedProduct.BrandID,
+		&providedProduct.MeasurementID,
+		&providedProduct.CategoryID,
+		&providedProduct.Name,
+		&providedProduct.UnitSize,
+		productId,
+		&sessionHousehold.ID,
+	)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	transaction.Commit(r.Context())
+	WriteJSON(w, http.StatusOK, nil, "Produto atualizado com sucesso")
 }
 
 func (e *Env) ListProductsHandler(w http.ResponseWriter, r *http.Request) {

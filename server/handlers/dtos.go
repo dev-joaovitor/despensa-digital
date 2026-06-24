@@ -135,6 +135,14 @@ type CreateProductDTO struct {
 	UnitSize int64 `json:"unit_size"`
 }
 
+type UpdateProductDTO struct {
+	Name string `json:"name"`
+	BrandID int64 `json:"brand_id"`
+	MeasurementID int64 `json:"measurement_id"`
+	CategoryID int64 `json:"category_id"`
+	UnitSize int64 `json:"unit_size"`
+}
+
 type ListProductsDTO struct {
 	ID int64 `json:"id"`
 	Name string `json:"name"`
@@ -198,12 +206,15 @@ type ListStockProductsDTO struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	Brand struct {
+		ID int64 `json:"id"`
 		Name string `json:"name"`
 	} `json:"brand"`
 	Category struct {
+		ID int64 `json:"id"`
 		Name string `json:"name"`
 	} `json:"category"`
 	Measurement struct {
+		ID int64 `json:"id"`
 		Size int64 `json:"size"`
 		Acronym string `json:"acronym"`
 	} `json:"measurement"`
