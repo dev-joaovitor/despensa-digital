@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Modal from './Modal.svelte';
 	import Input from './Input.svelte';
+	import DateInput from './DateInput.svelte';
 	import SearchSelect from './SearchSelect.svelte';
 	import MoneyInput from './MoneyInput.svelte';
 	import PrimaryButton from './PrimaryButton.svelte';
@@ -144,7 +145,7 @@
 						<div class="fields">
 							<MoneyInput bind:value={row.price} />
 							<Input type="number" min="1" step="1" bind:value={row.quantity} />
-							<Input type="date" bind:value={row.expiration_date} />
+							<DateInput bind:value={row.expiration_date} />
 							<SearchSelect
 								placeholder="Estabelecimento"
 								items={establishments}

@@ -5,8 +5,10 @@
 	import PrimaryButton from '$lib/components/PrimaryButton.svelte';
 	import PantryProductCard from '$lib/components/PantryProductCard.svelte';
 	import ProductFormModal from '$lib/components/ProductFormModal.svelte';
+	import StockTransactionModal from '$lib/components/StockTransactionModal.svelte';
 	import AddPriceObservationModal from '$lib/components/AddPriceObservationModal.svelte';
 	import type { StockProduct } from '$lib/pantry';
+	import type { Product } from '$lib/price-observations';
 
 	let { data } = $props();
 
@@ -19,6 +21,9 @@
 	let editOpen = $state(false);
 	let editProduct = $state<StockProduct | null>(null);
 	let priceOpen = $state(false);
+
+	let stockOpen = $state(false);
+	let stockProduct = $state<Product | null>(null);
 
 	// Keep state in sync when the loader reruns (search / back-forward navigation).
 	$effect(() => {
@@ -48,6 +53,21 @@
 		editProduct = product;
 		editOpen = true;
 	}
+
+	function openCreate() {
+		editProduct = null;
+		editOpen = true;
+	}
+
+	function handleProductSaved(product: Product) {
+		invalidateAll();
+		if (editProduct == null) {
+			// Created (not edited) from pantry: offer to record initial stock.
+			editOpen = false;
+			stockProduct = product;
+			stockOpen = true;
+		}
+	}
 </script>
 
 <svelte:head>
@@ -61,7 +81,7 @@
 
 	<div class="toolbar">
 		<SearchInput bind:value={searchValue} delay={1000} onsearch={handleSearch} />
-		<PrimaryButton onclick={() => {}}>Adicionar produto</PrimaryButton>
+		<PrimaryButton onclick={openCreate}>Adicionar produto</PrimaryButton>
 		<PrimaryButton onclick={() => (priceOpen = true)}>Registrar preço</PrimaryButton>
 	</div>
 
@@ -82,6 +102,13 @@
 	bind:brands
 	bind:categories
 	measurements={data.measurements}
+	onsuccess={handleProductSaved}
+/>
+
+<StockTransactionModal
+	bind:open={stockOpen}
+	product={stockProduct}
+	bind:establishments
 	onsuccess={invalidateAll}
 />
 
