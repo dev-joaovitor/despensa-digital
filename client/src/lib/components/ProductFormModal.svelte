@@ -5,11 +5,18 @@
 	import PrimaryButton from './PrimaryButton.svelte';
 	import ResourceFormModal from './ResourceFormModal.svelte';
 	import type { NamedResource } from '$lib/resources';
-	import { createProduct, type Product, type UnitMeasurement } from '$lib/price-observations';
+	import {
+		createProduct,
+		updateProduct,
+		type Product,
+		type UnitMeasurement
+	} from '$lib/price-observations';
+	import type { StockProduct } from '$lib/pantry';
 
 	interface Props {
 		open?: boolean;
 		initialName?: string;
+		product?: StockProduct | null;
 		brands: NamedResource[];
 		categories: NamedResource[];
 		measurements: UnitMeasurement[];
@@ -19,11 +26,14 @@
 	let {
 		open = $bindable(false),
 		initialName = '',
+		product = null,
 		brands = $bindable(),
 		categories = $bindable(),
 		measurements,
 		onsuccess
 	}: Props = $props();
+
+	const isEdit = $derived(product != null);
 
 	let name = $state('');
 	let brandId = $state<number | null>(null);
@@ -40,11 +50,19 @@
 	let categoryInitialName = $state('');
 
 	function reset() {
-		name = initialName;
-		brandId = null;
-		unitSize = '';
-		measurementId = null;
-		categoryId = null;
+		if (product) {
+			name = product.name;
+			brandId = product.brand.id;
+			unitSize = String(product.measurement.size);
+			measurementId = product.measurement.id;
+			categoryId = product.category.id;
+		} else {
+			name = initialName;
+			brandId = null;
+			unitSize = '';
+			measurementId = null;
+			categoryId = null;
+		}
 		errorMsg = '';
 		added = false;
 	}
@@ -74,13 +92,37 @@
 		errorMsg = '';
 
 		try {
-			const result = await createProduct({
+			const input = {
 				name: name.trim(),
 				brand_id: brandId!,
 				measurement_id: measurementId!,
 				category_id: categoryId!,
 				unit_size: size
-			});
+			};
+
+			if (product) {
+				const result = await updateProduct(product.id, input);
+				if (result.ok) {
+					// Build the enriched product locally for the callback.
+					const brand = brands.find((b) => b.id === brandId);
+					const category = categories.find((c) => c.id === categoryId);
+					const measurement = measurements.find((m) => m.id === measurementId);
+					onsuccess({
+						id: product.id,
+						name: name.trim(),
+						brand: { name: brand?.name ?? '' },
+						category: { name: category?.name ?? '' },
+						measurement: { size, acronym: measurement?.acronym ?? '' }
+					});
+					open = false;
+					return;
+				}
+
+				errorMsg = result.message || 'Não foi possível salvar.';
+				return;
+			}
+
+			const result = await createProduct(input);
 
 			if (result.ok && result.data) {
 				// The create response only returns ids, so build the enriched product locally.
@@ -131,7 +173,7 @@
 	}
 </script>
 
-<Modal bind:open title="Criar produto">
+<Modal bind:open title={isEdit ? 'Editar produto' : 'Criar produto'}>
 	{#if added}
 		<p class="info" role="status">Produto criado com sucesso.</p>
 		<div class="actions">
@@ -172,7 +214,9 @@
 
 			{#if errorMsg}<p class="error" role="alert">{errorMsg}</p>{/if}
 
-			<PrimaryButton type="submit" disabled={!canSubmit} {loading}>Criar</PrimaryButton>
+			<PrimaryButton type="submit" disabled={!canSubmit} {loading}>
+				{isEdit ? 'Salvar' : 'Criar'}
+			</PrimaryButton>
 		</form>
 	{/if}
 </Modal>

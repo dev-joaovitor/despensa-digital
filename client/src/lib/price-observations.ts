@@ -84,6 +84,17 @@ export async function createProduct(
 	return { ok: status === 201 && !body.error, data: body.data, message: body.message };
 }
 
+export async function updateProduct(
+	id: number,
+	input: CreateProductInput
+): Promise<{ ok: boolean; message?: string }> {
+	const { status, body } = await apiFetch(`/api/v1/products/${id}`, {
+		method: 'PATCH',
+		body: JSON.stringify(input)
+	});
+	return { ok: status === 200 && !body.error, message: body.message };
+}
+
 export async function createPriceObservation(
 	input: CreatePriceObservationInput
 ): Promise<{ ok: boolean; message?: string }> {
