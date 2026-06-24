@@ -24,14 +24,11 @@
 <svelte:window onkeydown={open ? handleKeydown : undefined} />
 
 {#if open}
-	<div
-		class="backdrop"
-		role="presentation"
-		onclick={(e) => {
-			if (e.target === e.currentTarget) close();
-		}}
-	>
+	<div class="backdrop">
 		<div class="dialog {size}" role="dialog" aria-modal="true" aria-label={title}>
+			<button type="button" class="close" aria-label="Fechar" onclick={close}>
+				&times;
+			</button>
 			{#if title}
 				<h2>{title}</h2>
 			{/if}
@@ -53,6 +50,7 @@
 	}
 
 	.dialog {
+		position: relative;
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-md);
@@ -73,6 +71,29 @@
 
 	.dialog.lg {
 		max-width: 40rem;
+	}
+
+	.close {
+		position: absolute;
+		top: var(--space-sm);
+		right: var(--space-sm);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 2rem;
+		height: 2rem;
+		padding: 0;
+		font-size: 1.5rem;
+		line-height: 1;
+		color: var(--color-text);
+		background: none;
+		border: none;
+		border-radius: var(--radius);
+		cursor: pointer;
+	}
+
+	.close:hover {
+		background-color: var(--color-border);
 	}
 
 	h2 {
