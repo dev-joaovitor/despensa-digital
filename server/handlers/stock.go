@@ -10,6 +10,11 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// lowStockRestockThreshold: a product is auto-added to the shopping list once its
+// total remaining stock drops below this fraction of its latest batch's initial
+// quantity. Provisional until a per-product threshold field exists.
+const lowStockRestockThreshold = 0.2
+
 func (e *Env) StockHandler(r chi.Router) {
 	r.Get("/products", e.ListStockProductsHandler)
 	r.Get("/products/{productid}", e.GetStockProductHandler)
@@ -50,7 +55,7 @@ func (e *Env) ListStockProductsHandler(w http.ResponseWriter, r *http.Request) {
 		JOIN brands b ON p.brand_id = b.id
 		JOIN unit_measurements um ON p.measurement_id = um.id
 		JOIN categories c ON p.category_id = c.id
-		LEFT JOIN stock_batches sb ON sb.product_id = p.id
+		LEFT JOIN stock_batches sb ON sb.product_id = p.id AND sb.remaining_quantity > 0
 		WHERE p.deleted_at IS NULL
 		AND p.household_id = $1
 		` + searchQuery + `
@@ -118,7 +123,7 @@ func (e *Env) GetStockProductHandler(w http.ResponseWriter, r *http.Request) {
 		JOIN brands b ON p.brand_id = b.id
 		JOIN unit_measurements um ON p.measurement_id = um.id
 		JOIN categories c ON p.category_id = c.id
-		LEFT JOIN stock_batches sb ON sb.product_id = p.id
+		LEFT JOIN stock_batches sb ON sb.product_id = p.id AND sb.remaining_quantity > 0
 		WHERE p.deleted_at IS NULL
 		AND p.household_id = $1
 		AND p.id = $2
@@ -319,6 +324,48 @@ func (e *Env) TransactStockBatchHandler(w http.ResponseWriter, r *http.Request) 
 		fmt.Printf("Database error insert stock transactions: %v\n", err)
 		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
 		return
+	}
+
+	// When a consumption/waste drops a product's live stock low, silently add it to
+	// the shopping list so the user is prompted to restock.
+	if providedTransaction.Type == models.TransactionConsumption ||
+		providedTransaction.Type == models.TransactionWaste {
+		_, err = transaction.Exec(
+			ctx,
+			`
+			INSERT INTO shopping_list_items (household_id, product_id, quantity, is_checked)
+			SELECT $1, latest.product_id, latest.initial_quantity, false
+			FROM (
+				SELECT product_id, initial_quantity
+				FROM stock_batches
+				WHERE product_id = (SELECT product_id FROM stock_batches WHERE id = $2)
+				AND household_id = $1
+				ORDER BY created_at DESC, id DESC
+				LIMIT 1
+			) latest
+			WHERE (
+				SELECT COALESCE(SUM(remaining_quantity), 0)
+				FROM stock_batches
+				WHERE product_id = latest.product_id
+				AND household_id = $1
+				AND remaining_quantity > 0
+			) < latest.initial_quantity * $3
+			AND NOT EXISTS (
+				SELECT 1 FROM shopping_list_items
+				WHERE product_id = latest.product_id
+				AND household_id = $1
+				AND deleted_at IS NULL
+			)
+			`,
+			sessionHousehold.ID,
+			batchId,
+			lowStockRestockThreshold,
+		)
+		if err != nil {
+			fmt.Printf("Database error auto-add shopping item: %v\n", err)
+			WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
+			return
+		}
 	}
 
 	transaction.Commit(ctx)
