@@ -436,10 +436,18 @@ func TransactStockBatchValidator(transaction *TransactStockBatchDTO) error {
 	validationErrors := []string{}
 
 	switch transaction.Type {
-	case models.TransactionPurchase:
-		if transaction.ProductID == nil || *transaction.ProductID == 0 {
-			validationErrors = append(validationErrors, "Produto é obrigatório.")
+	case models.TransactionCorrection,
+		models.TransactionPurchase:
+		if (transaction.Type == models.TransactionPurchase) {
+			if transaction.ProductID == nil || *transaction.ProductID == 0 {
+				validationErrors = append(validationErrors, "Produto é obrigatório.")
+			}
+		} else {
+			if transaction.BatchID == nil || *transaction.BatchID == 0 {
+				validationErrors = append(validationErrors, "Lote é obrigatório.")
+			}
 		}
+
 		if transaction.EstablishmentID == nil || *transaction.EstablishmentID == 0 {
 			validationErrors = append(validationErrors, "Estabelecimento é obrigatório.")
 		}
@@ -450,8 +458,7 @@ func TransactStockBatchValidator(transaction *TransactStockBatchDTO) error {
 			validationErrors = append(validationErrors, "Data de validade é obrigatório.")
 		}
 	case models.TransactionConsumption,
-		models.TransactionWaste,
-		models.TransactionCorrection:
+		models.TransactionWaste:
 		if transaction.BatchID == nil || *transaction.BatchID == 0 {
 			validationErrors = append(validationErrors, "Lote é obrigatório.")
 		}
