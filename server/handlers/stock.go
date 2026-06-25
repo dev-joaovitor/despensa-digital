@@ -12,6 +12,7 @@ import (
 
 func (e *Env) StockHandler(r chi.Router) {
 	r.Get("/products", e.ListStockProductsHandler)
+	r.Get("/products/{productid}", e.GetStockProductHandler)
 	r.Get("/products/{productid}/batches", e.ListStockProductBatchesHandler)
 	r.Post("/transact", e.TransactStockBatchHandler)
 }
@@ -89,6 +90,68 @@ func (e *Env) ListStockProductsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	WriteJSON(w, http.StatusOK, products, "Produtos da despensa listados com sucesso")
+}
+
+func (e *Env) GetStockProductHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	sessionHousehold, err := e.GetSessionUserHousehold(ctx)
+	if err != nil {
+		fmt.Printf("Error getting household: %v\n", err)
+		WriteError(w, http.StatusInternalServerError, "Erro interno")
+		return
+	}
+
+	productId := r.PathValue("productid")
+	if productId == "" {
+		WriteError(w, http.StatusBadRequest, "Insira o ID do produto")
+		return
+	}
+
+	product := ListStockProductsDTO{}
+	err = e.DB.QueryRow(
+		r.Context(),
+		`
+		SELECT p.id, p.name, p.created_at, p.updated_at, b.id, b.name, p.unit_size,
+			um.id, um.acronym, c.id, c.name, COALESCE(SUM(sb.initial_quantity), 0) initial,
+			COALESCE(SUM(sb.remaining_quantity), 0) remaining
+		FROM products p
+		JOIN brands b ON p.brand_id = b.id
+		JOIN unit_measurements um ON p.measurement_id = um.id
+		JOIN categories c ON p.category_id = c.id
+		LEFT JOIN stock_batches sb ON sb.product_id = p.id
+		WHERE p.deleted_at IS NULL
+		AND p.household_id = $1
+		AND p.id = $2
+		GROUP BY p.id, b.id, b.name, um.id, um.acronym, c.id, c.name
+		`,
+		&sessionHousehold.ID,
+		productId,
+	).Scan(
+		&product.ID,
+		&product.Name,
+		&product.CreatedAt,
+		&product.UpdatedAt,
+		&product.Brand.ID,
+		&product.Brand.Name,
+		&product.Measurement.Size,
+		&product.Measurement.ID,
+		&product.Measurement.Acronym,
+		&product.Category.ID,
+		&product.Category.Name,
+		&product.Stock.Initial,
+		&product.Stock.Remaining,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			WriteError(w, http.StatusNotFound, "Produto não encontrado")
+			return
+		}
+		fmt.Printf("Database error: %v\n", err)
+		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
+		return
+	}
+
+	WriteJSON(w, http.StatusOK, product, "Produto da despensa listado com sucesso")
 }
 
 func (e *Env) ListStockProductBatchesHandler(w http.ResponseWriter, r *http.Request) {

@@ -108,7 +108,7 @@
 
 	<div class="forgot">
 		<TextButton type="button" onclick={handleForgotPassword} loading={sendingCode}>
-			Esqueci minha senha
+            {mode === 'code' ? 'Reenviar código' : 'Esqueci minha senha'}
 		</TextButton>
 	</div>
 
