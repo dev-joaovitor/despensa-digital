@@ -1,37 +1,45 @@
 <script lang="ts">
 	import SecondaryButton from './SecondaryButton.svelte';
-	import type { StockProduct } from '$lib/pantry';
+	import type { StockBatch, BatchTransactionType } from '$lib/stock';
 
 	interface Props {
-		product: StockProduct;
-		onedit: (product: StockProduct) => void;
+		batch: StockBatch;
+		onaction: (batch: StockBatch, type: BatchTransactionType) => void;
 	}
 
-	let { product, onedit }: Props = $props();
+	let { batch, onaction }: Props = $props();
 
-	const { initial, remaining } = $derived(product.stock);
+	const initial = $derived(batch.initial_quantity);
+	const remaining = $derived(batch.remaining_quantity);
 	const hasStock = $derived(initial > 0);
 	const fillPct = $derived(hasStock ? Math.round((remaining / initial) * 100) : 0);
-	const meterLabel = $derived(hasStock ? `${remaining}/${initial} em estoque` : 'Sem estoque');
+	const meterLabel = $derived(hasStock ? `${remaining}/${initial} restante` : 'Sem estoque');
+
+	// Show only the date portion of the ISO timestamp, formatted as DD/MM/YYYY.
+	const expiration = $derived.by(() => {
+		const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(batch.expiration_date);
+		return match ? `${match[3]}/${match[2]}/${match[1]}` : '—';
+	});
 </script>
 
 <article class="card">
 	<header class="top">
-		<h3 class="name">{product.name}</h3>
-		<span class="chip">{product.category.name}</span>
+		<span class="label">Validade</span>
+		<span class="date">{expiration}</span>
 	</header>
 
-	<p class="brand">{product.brand.name}</p>
+	<p class="establishment">{batch.establishment.name}</p>
 
-	<div class="bottom">
-		<SecondaryButton onclick={() => onedit(product)}>Editar</SecondaryButton>
-		<span class="size">{product.measurement.size}{product.measurement.acronym}</span>
+	<div class="actions">
+		<SecondaryButton onclick={() => onaction(batch, 'consumption')}>Consumir</SecondaryButton>
+		<SecondaryButton onclick={() => onaction(batch, 'waste')}>Descartar</SecondaryButton>
+		<SecondaryButton onclick={() => onaction(batch, 'correction')}>Corrigir</SecondaryButton>
 	</div>
 
-	<a class="meter" class:empty={!hasStock} href="/pantry/{product.id}" aria-label="Ver lotes em estoque">
+	<div class="meter" class:empty={!hasStock}>
 		<div class="meter-fill" style="width: {fillPct}%"></div>
 		<span class="meter-label">{meterLabel}</span>
-	</a>
+	</div>
 </article>
 
 <style>
@@ -48,41 +56,35 @@
 
 	.top {
 		display: flex;
-		align-items: flex-start;
+		align-items: baseline;
 		justify-content: space-between;
 		gap: var(--space-sm);
 	}
 
-	.name {
+	.label {
+		font-size: 0.8125rem;
+		color: var(--color-text-muted);
+	}
+
+	.date {
 		font-size: 1.125rem;
 		color: var(--color-text);
 	}
 
-	.chip {
-		flex-shrink: 0;
-		font-size: 0.75rem;
-		color: var(--color-primary);
-		background-color: transparent;
-		border: 1px solid var(--color-primary);
-		border-radius: 999px;
-		padding: 0.125rem 0.625rem;
-	}
-
-	.brand {
+	.establishment {
 		font-size: 0.875rem;
 		color: var(--color-text-muted);
 	}
 
-	.bottom {
+	.actions {
 		display: flex;
-		align-items: center;
-		justify-content: space-between;
+		flex-wrap: wrap;
 		gap: var(--space-sm);
 	}
 
-	.size {
-		font-size: 0.8125rem;
-		color: var(--color-text-muted);
+	.actions :global(.btn) {
+		flex: 1;
+		white-space: nowrap;
 	}
 
 	/* Flush-attached to the card's bottom edge: bleed over the card padding. */
@@ -94,11 +96,6 @@
 		height: 1.5rem;
 		margin: auto calc(-1 * var(--space-md)) calc(-1 * var(--space-md));
 		background-color: var(--color-border);
-		cursor: pointer;
-	}
-
-	.meter:hover .meter-fill {
-		filter: brightness(1.1);
 	}
 
 	.meter-fill {
