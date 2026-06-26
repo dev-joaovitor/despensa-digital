@@ -164,7 +164,7 @@ func (e *Env) GetSessionUserHousehold(ctx context.Context) (*models.Household, e
 		SELECT h.id, h.name, h.creator_id,
 			h.invitation_code, h.created_at, h.updated_at
 		FROM households h
-		LEFT JOIN users u
+		JOIN users u
 		ON u.household_id = h.id
 		AND u.id = $1
 		WHERE h.deleted_at IS NULL
