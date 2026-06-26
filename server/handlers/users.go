@@ -39,6 +39,25 @@ func (e *Env) CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer transaction.Rollback(r.Context())
 
+	err = transaction.QueryRow(
+		r.Context(),
+		`
+		SELECT id
+		FROM users
+		WHERE email = $1
+		LIMIT 1
+		`,
+		providedUser.Email,
+	).Scan(nil)
+	if err == nil {
+		WriteError(w, http.StatusForbidden, "Email já utilizado")
+		return
+	} else if !errors.Is(err, sql.ErrNoRows) {
+		fmt.Printf("Database error search user by email: %v\n", err)
+		WriteError(w, http.StatusInternalServerError, "Erro interno no banco de dados")
+		return
+	}
+
 	var foundHousehold models.Household
 
 	if providedUser.InvitationCode != nil {
