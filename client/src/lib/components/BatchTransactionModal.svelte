@@ -58,7 +58,7 @@
 	$effect(() => {
 		if (open) {
 			quantity = batch ? String(batch.remaining_quantity) : '';
-			establishmentId = null;
+			establishmentId = batch ? batch.establishment.id : null;
 			price = batch ? batch.unit_price : 0;
 			expirationDate = batch ? dateOnly(batch.expiration_date) : '';
 			errorMsg = '';

@@ -26,7 +26,7 @@ export interface StockBatch {
 	expiration_date: string;
 	created_at: string;
 	updated_at: string;
-	establishment: { name: string };
+	establishment: { id: number, name: string };
 }
 
 export async function listProductBatches(productId: number): Promise<StockBatch[]> {

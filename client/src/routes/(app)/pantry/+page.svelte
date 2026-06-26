@@ -80,7 +80,7 @@
 	</header>
 
 	<div class="toolbar">
-		<SearchInput bind:value={searchValue} delay={1000} onsearch={handleSearch} />
+		<SearchInput bind:value={searchValue} onsearch={handleSearch} />
 		<PrimaryButton onclick={openCreate}>Adicionar produto</PrimaryButton>
 		<PrimaryButton onclick={() => (priceOpen = true)}>Registrar preço</PrimaryButton>
 	</div>

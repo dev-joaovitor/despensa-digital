@@ -65,7 +65,7 @@
 	</header>
 
 	<div class="toolbar">
-		<SearchInput bind:value={searchValue} delay={1000} onsearch={handleSearch} />
+		<SearchInput bind:value={searchValue} onsearch={handleSearch} />
 		<PrimaryButton onclick={() => (addOpen = true)}>Adicionar observação de preço</PrimaryButton>
 	</div>
 

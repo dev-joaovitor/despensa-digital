@@ -178,7 +178,7 @@ func (e *Env) ListStockProductBatchesHandler(w http.ResponseWriter, r *http.Requ
 		r.Context(),
 		`
 		SELECT sb.id, sb.unit_price, sb.initial_quantity, sb.remaining_quantity,
-			sb.expiration_date, sb.created_at, sb.updated_at, e.name
+			sb.expiration_date, sb.created_at, sb.updated_at, e.id, e.name
 		FROM stock_batches sb
 		JOIN establishments e
 		ON e.id = sb.establishment_id
@@ -207,6 +207,7 @@ func (e *Env) ListStockProductBatchesHandler(w http.ResponseWriter, r *http.Requ
 			&batch.ExpirationDate,
 			&batch.CreatedAt,
 			&batch.UpdatedAt,
+			&batch.Establishment.ID,
 			&batch.Establishment.Name,
 		)
 		batches = append(batches, batch)

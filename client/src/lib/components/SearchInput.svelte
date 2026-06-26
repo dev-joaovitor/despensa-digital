@@ -6,7 +6,7 @@
 		onsearch: (query: string) => void;
 	}
 
-	let { value = $bindable(''), placeholder = 'Pesquise', delay = 2000, onsearch }: Props = $props();
+	let { value = $bindable(''), placeholder = 'Pesquise', delay = 500, onsearch }: Props = $props();
 
 	let timer: ReturnType<typeof setTimeout> | undefined;
 
