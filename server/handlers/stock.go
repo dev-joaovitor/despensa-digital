@@ -349,7 +349,7 @@ func (e *Env) TransactStockBatchHandler(w http.ResponseWriter, r *http.Request) 
 				WHERE product_id = latest.product_id
 				AND household_id = $1
 				AND remaining_quantity > 0
-			) < latest.initial_quantity * $3
+			) <= GREATEST(1, latest.initial_quantity * $3)
 			AND NOT EXISTS (
 				SELECT 1 FROM shopping_list_items
 				WHERE product_id = latest.product_id
